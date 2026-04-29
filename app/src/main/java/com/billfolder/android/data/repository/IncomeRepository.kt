@@ -48,4 +48,15 @@ class IncomeRepository @Inject constructor(
             actualAmount = actualAmount,
         ),
     )
+
+    /**
+     * Backend retorna 204 em sucesso; convertemos non-2xx em HttpException
+     * pra o caller propagar pra UI (mesmo padrão dos outros repos).
+     */
+    suspend fun deleteEntry(id: String) {
+        val response = api.deleteIncomeEntry(id)
+        if (!response.isSuccessful) {
+            throw retrofit2.HttpException(response)
+        }
+    }
 }

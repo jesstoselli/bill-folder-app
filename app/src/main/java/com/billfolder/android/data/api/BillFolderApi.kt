@@ -173,6 +173,9 @@ interface BillFolderApi {
         @Body request: UpdateIncomeEntryRequest,
     ): IncomeEntryResponse
 
+    @DELETE("income-entries/{id}")
+    suspend fun deleteIncomeEntry(@Path("id") id: String): Response<Unit>
+
     // ------------------------------------------------------------------------
     // Credit Cards (config dos cartões)
     // ------------------------------------------------------------------------
