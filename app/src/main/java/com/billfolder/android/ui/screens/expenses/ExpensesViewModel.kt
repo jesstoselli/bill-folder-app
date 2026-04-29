@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
@@ -23,6 +24,15 @@ import javax.inject.Inject
  *  - "paid":    paga
  *
  * O backend já entrega o status computado correto — UI só agrupa.
+ *
+ * Estados de ação por row:
+ *  - pendingDelete: row em swipe-left aguardando confirmação no AlertDialog
+ *  - editing: row em swipe-right com sheet de edit aberta
+ *  - deletingId: id da row sendo deletada (entre confirm e resposta)
+ *
+ * Importante: o "pagar despesa" continua sendo um fluxo separado (tap
+ * na row pending/overdue → PayExpenseSheet). Swipe-right é pra editar
+ * a despesa em si — campos como label, dueDate, expectedAmount.
  */
 sealed interface ExpensesUiState {
     data object Loading : ExpensesUiState
@@ -30,6 +40,9 @@ sealed interface ExpensesUiState {
     data class Content(
         val cycle: CycleResponse,
         val expenses: List<ExpenseResponse>,
+        val pendingDelete: ExpenseResponse? = null,
+        val editing: ExpenseResponse? = null,
+        val deletingId: String? = null,
     ) : ExpensesUiState
     data class Error(val message: String) : ExpensesUiState
 }
@@ -51,6 +64,88 @@ class ExpensesViewModel @Inject constructor(
         if (_state.value is ExpensesUiState.Loading) return
         _state.value = ExpensesUiState.Loading
         load()
+    }
+
+    // ------------------------------------------------------------------------
+    // Delete flow (swipe-left)
+    // ------------------------------------------------------------------------
+
+    fun requestDelete(item: ExpenseResponse) {
+        _state.update { current ->
+            if (current is ExpensesUiState.Content) {
+                current.copy(pendingDelete = item)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelDelete() {
+        _state.update { current ->
+            if (current is ExpensesUiState.Content) {
+                current.copy(pendingDelete = null)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun confirmDelete() {
+        val current = _state.value
+        if (current !is ExpensesUiState.Content) return
+        val item = current.pendingDelete ?: return
+
+        _state.update {
+            (it as? ExpensesUiState.Content)
+                ?.copy(pendingDelete = null, deletingId = item.id)
+                ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                expensesRepository.delete(item.id)
+                _state.update { s ->
+                    if (s is ExpensesUiState.Content) {
+                        s.copy(
+                            expenses = s.expenses.filterNot { it.id == item.id },
+                            deletingId = null,
+                        )
+                    } else {
+                        s
+                    }
+                }
+            } catch (e: HttpException) {
+                _state.value = ExpensesUiState.Error("Erro ao deletar (HTTP ${e.code()})")
+            } catch (e: IOException) {
+                _state.value = ExpensesUiState.Error("Sem conexão. Tenta de novo.")
+            } catch (e: Exception) {
+                _state.value = ExpensesUiState.Error(e.message ?: "Algo deu errado.")
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Edit flow (swipe-right) — toggles do flag; PATCH é feito pela sheet
+    // ------------------------------------------------------------------------
+
+    fun requestEdit(item: ExpenseResponse) {
+        _state.update { current ->
+            if (current is ExpensesUiState.Content) {
+                current.copy(editing = item)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelEdit() {
+        _state.update { current ->
+            if (current is ExpensesUiState.Content) {
+                current.copy(editing = null)
+            } else {
+                current
+            }
+        }
     }
 
     private fun load() {
