@@ -27,15 +27,17 @@ import javax.inject.Inject
  * recorrentes do usuário (não tem filtro por ciclo nas sources, é
  * config global).
  *
- * Estados de ação por row (entries — sources tratadas em outra onda):
- *  - pendingDelete: entry em swipe-left aguardando confirmação no AlertDialog
- *  - editing: entry em swipe-right com sheet de edit aberta
- *  - deletingId: id da entry sendo deletada
+ * Dois flows de swipe paralelos, com nomes distintos pra evitar colisão:
+ *  - Entries: pendingDelete / editing / deletingId
+ *  - Sources: pendingDeleteSource / editingSource / deletingSourceId
  *
- * Importante: confirm-received (tap em entry expected/late → ConfirmReceivedSheet)
- * é fluxo separado e continua intacto. Swipe-right edita campos da entry
- * em si (sourceId, expectedAmount, expectedDate, notes), não toca em
- * status/actual*.
+ * Importante:
+ *  - Confirm-received (tap em entry expected/late → ConfirmReceivedSheet)
+ *    é fluxo separado e continua intacto. Swipe-right de entry edita
+ *    campos próprios (sourceId, expectedAmount, expectedDate, notes),
+ *    sem mexer em status/actual*.
+ *  - Deletar source no backend usa ON DELETE SET NULL — entries históricas
+ *    perdem só a referência ao template, não somem.
  */
 sealed interface IncomeUiState {
     data object Loading : IncomeUiState
@@ -44,9 +46,14 @@ sealed interface IncomeUiState {
         val cycle: CycleResponse,
         val entries: List<IncomeEntryResponse>,
         val sources: List<IncomeSourceResponse>,
+        // Entry flow state
         val pendingDelete: IncomeEntryResponse? = null,
         val editing: IncomeEntryResponse? = null,
         val deletingId: String? = null,
+        // Source flow state
+        val pendingDeleteSource: IncomeSourceResponse? = null,
+        val editingSource: IncomeSourceResponse? = null,
+        val deletingSourceId: String? = null,
     ) : IncomeUiState
     data class Error(val message: String) : IncomeUiState
 }
@@ -152,6 +159,101 @@ class IncomeViewModel @Inject constructor(
         }
     }
 
+    // ========================================================================
+    // Source flows (swipe nas IncomeSourceRow). Names com sufixo "Source" pra
+    // evitar colisão com entry flows acima — e dar contexto rápido na call site.
+    // ========================================================================
+
+    fun requestDeleteSource(item: IncomeSourceResponse) {
+        _state.update { current ->
+            if (current is IncomeUiState.Content) {
+                current.copy(pendingDeleteSource = item)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelDeleteSource() {
+        _state.update { current ->
+            if (current is IncomeUiState.Content) {
+                current.copy(pendingDeleteSource = null)
+            } else {
+                current
+            }
+        }
+    }
+
+    /**
+     * User confirmou delete da source. Backend usa ON DELETE SET NULL
+     * em income_entries.source_id — entries históricas ficam, perdem só
+     * a referência ao template. Atualizamos otimisticamente: removemos
+     * a source local e zeramos sourceId/sourceOrigin nas entries que
+     * apontavam pra ela (próximo refresh confirma com backend).
+     */
+    fun confirmDeleteSource() {
+        val current = _state.value
+        if (current !is IncomeUiState.Content) return
+        val source = current.pendingDeleteSource ?: return
+
+        _state.update {
+            (it as? IncomeUiState.Content)
+                ?.copy(pendingDeleteSource = null, deletingSourceId = source.id)
+                ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                incomeRepository.deleteSource(source.id)
+                _state.update { s ->
+                    if (s is IncomeUiState.Content) {
+                        s.copy(
+                            sources = s.sources.filterNot { it.id == source.id },
+                            // Reflete o ON DELETE SET NULL local: entries que
+                            // apontavam pra essa source perdem o link visual.
+                            entries = s.entries.map { entry ->
+                                if (entry.sourceId == source.id) {
+                                    entry.copy(sourceId = null, sourceOrigin = null)
+                                } else {
+                                    entry
+                                }
+                            },
+                            deletingSourceId = null,
+                        )
+                    } else {
+                        s
+                    }
+                }
+            } catch (e: HttpException) {
+                _state.value = IncomeUiState.Error("Erro ao deletar fonte (HTTP ${e.code()})")
+            } catch (e: IOException) {
+                _state.value = IncomeUiState.Error("Sem conexão. Tenta de novo.")
+            } catch (e: Exception) {
+                _state.value = IncomeUiState.Error(e.message ?: "Algo deu errado.")
+            }
+        }
+    }
+
+    fun requestEditSource(item: IncomeSourceResponse) {
+        _state.update { current ->
+            if (current is IncomeUiState.Content) {
+                current.copy(editingSource = item)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelEditSource() {
+        _state.update { current ->
+            if (current is IncomeUiState.Content) {
+                current.copy(editingSource = null)
+            } else {
+                current
+            }
+        }
+    }
+
     private fun load() {
         viewModelScope.launch {
             _state.value = try {
@@ -173,7 +275,13 @@ class IncomeViewModel @Inject constructor(
                 IncomeUiState.Content(
                     cycle = cycle,
                     entries = entries.sortedBy { it.expectedDate },
-                    sources = sources.filter { it.isActive },
+                    // Mostramos TODAS as sources (ativas + inativas) pro user
+                    // poder gerenciar via swipe. O campo isActive é soft-toggle
+                    // do backend; até termos UI pra ele, na prática toda source
+                    // do user vai estar ativa, então o filter era vestigial.
+                    // Quando expor isActive na sheet de edit, vale considerar
+                    // visual diferenciado pra inativas.
+                    sources = sources,
                 )
             } catch (e: HttpException) {
                 if (e.code() == HTTP_NOT_FOUND) {
