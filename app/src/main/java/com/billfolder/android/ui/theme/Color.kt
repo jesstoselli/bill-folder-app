@@ -84,12 +84,21 @@ val LightOutlineVariant           = Color(0xFFC2C9BB)
 val BfBrandBill = Color(0xFF86BC65)
 
 // ----------------------------------------------------------------------------
-// Paleta da pie chart "where is my money going?"
-// 6 cores estáveis (não usam dynamic color) — mapeamento categoria→cor é fixo.
+// Paleta da pie chart "para onde vai o dinheiro?"
+//
+// 7 cores ordenadas por contraste, atribuídas pela POSIÇÃO no ranking
+// (slot 0 pra maior categoria, slot 6 pra "outros"). Não há mapping por
+// chave de categoria — a cor de um slice depende do quanto ele pesa, não
+// do que ele é. Isso dá controle visual previsível e evita o problema
+// de "muitas categorias caindo no mesmo bucket de cor".
+//
+// Ordem: verde escuro → verde médio → verde claro → azul escuro →
+// azul claro → cinza médio → cinza claro (outros).
 // ----------------------------------------------------------------------------
-val BfChart1 = Color(0xFF86BC65) // groceries / food
-val BfChart2 = Color(0xFF6FA854) // entertainment / fun
-val BfChart3 = Color(0xFFC5E0A5) // self-care
-val BfChart4 = Color(0xFF5285A3) // bills / services
-val BfChart5 = Color(0xFFB4CAD6) // outros
-val BfChart6 = Color(0xFF9C9C9C) // shopping
+val BfChart1 = Color(0xFF3F7A1B) // 1ª — verde escuro saturado (slice dominante)
+val BfChart2 = Color(0xFF86BC65) // 2ª — verde principal (cash)
+val BfChart3 = Color(0xFFC5E0A5) // 3ª — verde claro (sage)
+val BfChart4 = Color(0xFF35506A) // 4ª — azul escuro denso
+val BfChart5 = Color(0xFF7AB0CC) // 5ª — azul claro saturado
+val BfChart6 = Color(0xFF9C9C9C) // 6ª — cinza médio
+val BfChart7 = Color(0xFFCFCFCF) // outros — cinza claro

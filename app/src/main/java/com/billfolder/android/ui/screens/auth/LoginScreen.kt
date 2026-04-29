@@ -170,7 +170,7 @@ private fun SignupLink(onClick: () -> Unit, enabled: Boolean) {
     val link   = stringResource(R.string.auth_no_account_link)
     val annotated: AnnotatedString = buildAnnotatedString {
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-            append(prefix)
+            append("$prefix ")
         }
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
             append(link)

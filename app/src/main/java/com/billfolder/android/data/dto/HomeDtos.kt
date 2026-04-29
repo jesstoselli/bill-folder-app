@@ -19,6 +19,10 @@ data class HomeResponse(
     @SerialName("expenseBreakdown")  val expenseBreakdown: HomeExpenseBreakdownDto,
     @SerialName("upcomingExpenses")  val upcomingExpenses: List<HomeUpcomingExpenseDto>,
     @SerialName("cardStatementsInCycle") val cardStatementsInCycle: List<HomeCardStatementDto>,
+    // Default empty pra retrocompat: se um build antigo do app pegar uma
+    // resposta nova do backend, ainda parseia. Inverso (backend antigo + app
+    // novo) também funciona via ignoreUnknownKeys + valor default.
+    @SerialName("categoryBreakdown") val categoryBreakdown: List<HomeCategoryBreakdownDto> = emptyList(),
 )
 
 @Serializable
@@ -74,4 +78,16 @@ data class HomeCardStatementDto(
     @SerialName("dueDate")     val dueDate: String,
     @SerialName("totalAmount") val totalAmount: Double,
     @SerialName("status")      val status: String,
+)
+
+/**
+ * Soma agregada por categoria do que passa pelo ciclo. Backend retorna
+ * já ordenado por valor descendente.
+ */
+@Serializable
+data class HomeCategoryBreakdownDto(
+    @SerialName("categoryId")   val categoryId: String,
+    @SerialName("categoryKey")  val categoryKey: String,
+    @SerialName("categoryName") val categoryName: String,
+    @SerialName("amount")       val amount: Double,
 )

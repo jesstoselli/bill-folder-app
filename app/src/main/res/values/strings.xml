@@ -13,7 +13,29 @@
     <!-- Common -->
     <string name="common_retry">tentar de novo</string>
     <string name="common_add">adicionar</string>
+    <string name="common_close">fechar</string>
     <string name="common_loading">carregando…</string>
+
+    <!-- Speed Dial — atalhos de "adicionar" -->
+    <string name="speed_dial_daily">avulsa</string>
+    <string name="speed_dial_income">renda</string>
+    <string name="speed_dial_expense">despesa</string>
+    <string name="speed_dial_card">cartão</string>
+    <string name="speed_dial_savings">poupança</string>
+
+    <!-- Drawer — navegação principal -->
+    <string name="drawer_home">início</string>
+    <string name="drawer_daily">despesas avulsas</string>
+    <string name="drawer_income">recebimentos</string>
+    <string name="drawer_expenses">despesas</string>
+    <string name="drawer_cards">despesas no cartão</string>
+    <string name="drawer_savings">poupança</string>
+    <string name="drawer_adjustments">ajustes do ciclo</string>
+    <string name="drawer_section_manage">gerenciar</string>
+    <string name="drawer_manage_cards">cartões</string>
+    <string name="drawer_manage_banks">bancos</string>
+    <string name="drawer_footer">app by jess.to</string>
+    <string name="drawer_close_content_description">fechar menu</string>
 
     <!-- Top bar -->
     <string name="topbar_menu">menu</string>
@@ -43,6 +65,12 @@
     <!-- Argumento %1$s recebe o BRL formatado, ex: "R$ 1.047,40" -->
     <string name="home_hero_realized_format">realizado: %1$s</string>
 
+    <!-- Pie chart "where is my money going?" -->
+    <string name="home_money_going_title">para onde vai o dinheiro?</string>
+    <string name="home_money_going_total">total</string>
+    <string name="home_money_going_empty">ainda não há gastos pra mostrar.</string>
+    <string name="home_money_going_others">outros</string>
+
     <!-- Cycle navigator -->
     <string name="cycle_previous_content_description">ciclo anterior</string>
     <string name="cycle_next_content_description">próximo ciclo</string>
@@ -63,4 +91,33 @@
     <string name="status_overdue">atrasada</string>
     <string name="status_pending">pendente</string>
     <string name="status_waiting">aguardando</string>
+
+    <!-- Generic transaction sheet -->
+    <string name="sheet_close_content_description">fechar</string>
+    <string name="sheet_save_cta">adicionar</string>
+    <string name="sheet_saving_cta">salvando…</string>
+
+    <!-- Add Daily Expense (sheet) -->
+    <string name="add_daily_title">nova despesa avulsa</string>
+    <string name="add_daily_field_date">data</string>
+    <string name="add_daily_field_label">descrição</string>
+    <string name="add_daily_field_amount">valor</string>
+    <string name="add_daily_field_category">categoria</string>
+    <string name="add_daily_field_account">conta</string>
+    <string name="add_daily_field_notes">notas (opcional)</string>
+    <string name="add_daily_validation_label_empty">Informe uma descrição.</string>
+    <string name="add_daily_validation_amount_invalid">Valor precisa ser maior que zero.</string>
+    <string name="add_daily_validation_category_empty">Escolha uma categoria.</string>
+    <string name="add_daily_validation_account_empty">Escolha uma conta.</string>
+
+    <!-- Daily expenses -->
+    <string name="daily_screen_title">despesas avulsas</string>
+    <string name="daily_total_label">total avulsas no ciclo</string>
+    <string name="daily_empty_title">você ainda não lançou nada nesse ciclo.</string>
+    <string name="daily_empty_subtitle">toque no botão de adicionar pra registrar a primeira.</string>
+    <string name="daily_no_cycle_title">você não tem um ciclo aberto.</string>
+    <string name="daily_no_cycle_subtitle">a criação de ciclos chega na próxima etapa do app.</string>
+    <!-- Headers de dia (relativos ao hoje) -->
+    <string name="daily_day_today">hoje</string>
+    <string name="daily_day_yesterday">ontem</string>
 </resources>

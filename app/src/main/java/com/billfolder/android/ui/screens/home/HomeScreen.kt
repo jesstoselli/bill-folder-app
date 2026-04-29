@@ -14,19 +14,28 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -37,11 +46,18 @@ import com.billfolder.android.R
 import com.billfolder.android.data.dto.HomeCardStatementDto
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.HomeUpcomingExpenseDto
+import com.billfolder.android.ui.components.BillFolderDrawer
+import com.billfolder.android.ui.components.BillFolderSpeedDialFab
 import com.billfolder.android.ui.components.BillFolderTopBar
+import com.billfolder.android.ui.components.DrawerDestination
+import com.billfolder.android.ui.components.SpeedDialItem
+import com.billfolder.android.ui.screens.dailyexpenses.AddDailyExpenseSheet
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.screens.home.components.HomeHeroCard
 import com.billfolder.android.ui.screens.home.components.HomeListRow
+import com.billfolder.android.ui.screens.home.components.WhereMoneyGoingCard
 import com.billfolder.android.ui.theme.PillShape
+import kotlinx.coroutines.launch
 
 /**
  * Home V2 — fiel ao wireframe do BillFolder-InventarioTelas v0.1 §5.
@@ -57,42 +73,141 @@ import com.billfolder.android.ui.theme.PillShape
 @Composable
 fun HomeScreen(
     onLogout: () -> Unit,
+    onNavigateFromDrawer: (DrawerDestination) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
+    // Sheet de "nova avulsa" — gatilho disparado pelo Speed Dial.
+    // Quando outras transações virarem sheets também, esse vira sealed
+    // class de "qual sheet abrir" controlada por uma única var.
+    var showAddDailySheet by remember { mutableStateOf(false) }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            BillFolderDrawer(
+                selected = DrawerDestination.Home,
+                onNavigate = { destination ->
+                    scope.launch { drawerState.close() }
+                    if (destination != DrawerDestination.Home) {
+                        // Home → no-op (já estamos aqui).
+                        // Outras telas: o NavHost decide a rota.
+                        onNavigateFromDrawer(destination)
+                    }
+                },
+            )
+        },
+    ) {
+        HomeScaffold(
+            state = state,
+            onMenuClick = { scope.launch { drawerState.open() } },
+            onAvatarClick = { viewModel.logout(onDone = onLogout) },
+            onRefresh = viewModel::refresh,
+            onSpeedDialDaily = { showAddDailySheet = true },
+        )
+    }
+
+    // Sheet renderizado fora do drawer pra ficar em cima de tudo.
+    if (showAddDailySheet) {
+        AddDailyExpenseSheet(
+            onDismiss = { showAddDailySheet = false },
+            onSaved = { viewModel.refresh() },
+        )
+    }
+}
+
+@Composable
+private fun HomeScaffold(
+    state: HomeUiState,
+    onMenuClick: () -> Unit,
+    onAvatarClick: () -> Unit,
+    onRefresh: () -> Unit,
+    onSpeedDialDaily: () -> Unit,
+) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             BillFolderTopBar(
-                onMenuClick  = { /* TODO drawer — fase 3 */ },
-                onAvatarClick = { viewModel.logout(onDone = onLogout) },
+                onMenuClick  = onMenuClick,
+                onAvatarClick = onAvatarClick,
             )
         },
-        floatingActionButton = { AddFab(onClick = { /* TODO Speed Dial */ }) },
     ) { innerPadding ->
-        when (val s = state) {
-            HomeUiState.Loading  -> CenteredLoading(innerPadding)
-            HomeUiState.NoCycle  -> NoCycleEmptyState(innerPadding)
-            is HomeUiState.Error -> ErrorState(
-                message = s.message,
-                onRetry = viewModel::refresh,
-                paddingValues = innerPadding,
-            )
-            is HomeUiState.Content -> HomeContent(
-                data = s.data,
-                paddingValues = innerPadding,
-                onPreviousCycle = { /* TODO */ },
-                onNextCycle = { /* TODO */ },
-            )
+        // Box raiz pra que o Speed Dial possa sobrepor o conteúdo principal
+        // quando aberto. Tudo abaixo do topBar respeita innerPadding.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            when (val s = state) {
+                HomeUiState.Loading  -> CenteredLoading()
+                HomeUiState.NoCycle  -> NoCycleEmptyState()
+                is HomeUiState.Error -> ErrorState(
+                    message = s.message,
+                    onRetry = onRefresh,
+                )
+                is HomeUiState.Content -> HomeContent(
+                    data = s.data,
+                    onPreviousCycle = { /* TODO */ },
+                    onNextCycle = { /* TODO */ },
+                )
+            }
+
+            // Speed Dial — fica em cima de tudo. Quando fechado, mostra só
+            // o FAB pílula. Quando aberto, scrim cobre o conteúdo.
+            BillFolderSpeedDialFab(items = rememberSpeedDialItems(onDaily = onSpeedDialDaily))
         }
     }
 }
 
 @Composable
+private fun rememberSpeedDialItems(onDaily: () -> Unit): List<SpeedDialItem> {
+    val daily   = stringResource(R.string.speed_dial_daily)
+    val income  = stringResource(R.string.speed_dial_income)
+    val expense = stringResource(R.string.speed_dial_expense)
+    val card    = stringResource(R.string.speed_dial_card)
+    val savings = stringResource(R.string.speed_dial_savings)
+
+    // Ordem por proximidade do dedo (Fitts): o item mais frequente fica
+    // por último na lista — é o que renderiza mais próximo do main FAB
+    // quando o Speed Dial expande. Avulsa é o mais usado no dia-a-dia,
+    // poupança o menos.
+    return listOf(
+        SpeedDialItem(
+            label = savings,
+            icon = Icons.Default.Savings,
+            onClick = { /* TODO sheet de savings transaction */ },
+        ),
+        SpeedDialItem(
+            label = income,
+            icon = Icons.Default.AttachMoney,
+            onClick = { /* TODO sheet de income */ },
+        ),
+        SpeedDialItem(
+            label = card,
+            icon = Icons.Default.CreditCard,
+            onClick = { /* TODO sheet de card entry */ },
+        ),
+        SpeedDialItem(
+            label = expense,
+            icon = Icons.AutoMirrored.Filled.ReceiptLong,
+            onClick = { /* TODO sheet de expense */ },
+        ),
+        SpeedDialItem(
+            label = daily,
+            icon = Icons.Default.ShoppingBag,
+            onClick = onDaily,
+        ),
+    )
+}
+
+@Composable
 private fun HomeContent(
     data: HomeResponse,
-    paddingValues: PaddingValues,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
 ) {
@@ -101,9 +216,7 @@ private fun HomeContent(
     val overdue = collectOverdue(data)
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
@@ -119,6 +232,12 @@ private fun HomeContent(
 
         item {
             HomeHeroCard(balance = data.balance)
+        }
+
+        if (data.categoryBreakdown.isNotEmpty()) {
+            item {
+                WhereMoneyGoingCard(breakdown = data.categoryBreakdown)
+            }
         }
 
         if (nextDue.isNotEmpty()) {
@@ -180,27 +299,6 @@ private fun SectionHeader(text: String, trailingIcon: Boolean = false) {
     }
 }
 
-@Composable
-private fun AddFab(onClick: () -> Unit) {
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        shape = PillShape,
-        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp),
-    ) {
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = stringResource(R.string.common_add),
-        )
-        Spacer(Modifier.size(8.dp))
-        Text(
-            text = stringResource(R.string.common_add),
-            style = MaterialTheme.typography.labelLarge,
-        )
-    }
-}
-
 // ----------------------------------------------------------------------------
 // Helpers — unifica HomeUpcomingExpenseDto + HomeCardStatementDto numa
 // projeção comum, e separa em "next due" vs "overdue" baseado no status.
@@ -254,11 +352,9 @@ private fun collectOverdue(data: HomeResponse): List<HomeRowProjection> =
 // ----------------------------------------------------------------------------
 
 @Composable
-private fun CenteredLoading(paddingValues: PaddingValues) {
+private fun CenteredLoading() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -269,12 +365,10 @@ private fun CenteredLoading(paddingValues: PaddingValues) {
 private fun ErrorState(
     message: String,
     onRetry: () -> Unit,
-    paddingValues: PaddingValues,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
             .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -294,11 +388,10 @@ private fun ErrorState(
 }
 
 @Composable
-private fun NoCycleEmptyState(paddingValues: PaddingValues) {
+private fun NoCycleEmptyState() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
             .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
