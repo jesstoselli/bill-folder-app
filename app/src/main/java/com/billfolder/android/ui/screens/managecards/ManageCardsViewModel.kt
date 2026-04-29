@@ -15,17 +15,22 @@ import java.io.IOException
 import javax.inject.Inject
 
 /**
- * Tela "gerenciar > cartões". CRUD da entidade CreditCardAccount —
- * lista, adiciona, deleta. Cartões são durávels; não dependem de ciclo.
+ * Tela "gerenciar > cartões". CRUD completo da entidade CreditCardAccount —
+ * lista, adiciona, edita, deleta. Cartões são duráveis; não dependem de ciclo.
  *
- * Deleção é em 2 passos: swipe abre dialog de confirmação (pendingDelete),
- * confirmação faz a chamada DELETE. Cancelar (ou tap fora) limpa o pending.
+ * Deleção é em 2 passos: swipe-left abre dialog de confirmação (pendingDelete),
+ * confirmação faz a chamada DELETE. Cancelar limpa o pending.
+ *
+ * Edição: swipe-right abre AddCreditCardSheet em modo edit (editing). PATCH
+ * é feito pela própria sheet; aqui só guardamos o flag pra propagar pro
+ * `existing` da sheet e pro `isPending` do SwipeToActionRow.
  */
 sealed interface ManageCardsUiState {
     data object Loading : ManageCardsUiState
     data class Content(
         val cards: List<CreditCardAccountResponse>,
         val pendingDelete: CreditCardAccountResponse? = null,
+        val editing: CreditCardAccountResponse? = null,
         val deletingId: String? = null,
     ) : ManageCardsUiState
     data class Error(val message: String) : ManageCardsUiState
@@ -103,6 +108,30 @@ class ManageCardsViewModel @Inject constructor(
                 _state.value = ManageCardsUiState.Error("Sem conexão. Tenta de novo.")
             } catch (e: Exception) {
                 _state.value = ManageCardsUiState.Error(e.message ?: "Algo deu errado.")
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Edit flow (swipe-right) — toggles do flag; PATCH é feito pela sheet
+    // ------------------------------------------------------------------------
+
+    fun requestEdit(card: CreditCardAccountResponse) {
+        _state.update { current ->
+            if (current is ManageCardsUiState.Content) {
+                current.copy(editing = card)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelEdit() {
+        _state.update { current ->
+            if (current is ManageCardsUiState.Content) {
+                current.copy(editing = null)
+            } else {
+                current
             }
         }
     }
