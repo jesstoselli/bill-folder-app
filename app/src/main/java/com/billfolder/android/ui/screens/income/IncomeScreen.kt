@@ -132,6 +132,8 @@ fun IncomeScreen(
                     onConfirmReceive = { entry -> confirmingEntry = entry },
                     onRequestDelete = viewModel::requestDelete,
                     onRequestEdit = viewModel::requestEdit,
+                    onRequestDeleteSource = viewModel::requestDeleteSource,
+                    onRequestEditSource = viewModel::requestEditSource,
                 )
             }
         }
@@ -181,6 +183,30 @@ fun IncomeScreen(
                 onCancel = viewModel::cancelDelete,
             )
         }
+
+        // ---- Source overlays (Onda 6) ----
+
+        // Sheet de editar fonte (modo edit) — visível enquanto editingSource != null.
+        if (current is IncomeUiState.Content && current.editingSource != null) {
+            AddIncomeSourceSheet(
+                existing = current.editingSource,
+                onDismiss = viewModel::cancelEditSource,
+                onSaved = {
+                    viewModel.cancelEditSource()
+                    viewModel.refresh()
+                },
+            )
+        }
+
+        // Dialog de confirmação de delete da fonte — registra na mensagem
+        // que entries históricas vão preservadas (backend SET NULL).
+        if (current is IncomeUiState.Content && current.pendingDeleteSource != null) {
+            DeleteIncomeSourceDialog(
+                sourceOrigin = current.pendingDeleteSource.origin,
+                onConfirm = viewModel::confirmDeleteSource,
+                onCancel = viewModel::cancelDeleteSource,
+            )
+        }
     }
 }
 
@@ -192,6 +218,8 @@ private fun IncomeContent(
     onConfirmReceive: (IncomeEntryResponse) -> Unit,
     onRequestDelete: (IncomeEntryResponse) -> Unit,
     onRequestEdit: (IncomeEntryResponse) -> Unit,
+    onRequestDeleteSource: (IncomeSourceResponse) -> Unit,
+    onRequestEditSource: (IncomeSourceResponse) -> Unit,
 ) {
     val entries = state.entries
     val sources = state.sources
@@ -275,15 +303,64 @@ private fun IncomeContent(
         }
 
         if (sources.isNotEmpty()) {
-            // Swipe nas sources entra no Passo 4 dessa onda — por enquanto
-            // só lista (mas já dá pra criar via CTA acima).
             items(sources, key = { it.id }) { source ->
-                IncomeSourceRow(source = source)
+                SwipeToActionRow(
+                    isPending = state.pendingDeleteSource?.id == source.id ||
+                        state.editingSource?.id == source.id,
+                    onDelete = { onRequestDeleteSource(source) },
+                    onEdit = { onRequestEditSource(source) },
+                ) {
+                    IncomeSourceRow(source = source)
+                }
             }
         }
 
         item { Spacer(Modifier.height(80.dp)) }
     }
+}
+
+/**
+ * Dialog de delete de IncomeSource. Mensagem registra que recebimentos
+ * passados ficam preservados (backend usa ON DELETE SET NULL em
+ * income_entries.source_id) — info importante porque sem isso o user
+ * pode hesitar achando que vai apagar o histórico.
+ */
+@Composable
+private fun DeleteIncomeSourceDialog(
+    sourceOrigin: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(text = stringResource(R.string.income_source_delete_dialog_title))
+        },
+        text = {
+            Text(
+                text = stringResource(
+                    R.string.income_source_delete_dialog_message,
+                    sourceOrigin,
+                ),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(stringResource(R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
 }
 
 /**
