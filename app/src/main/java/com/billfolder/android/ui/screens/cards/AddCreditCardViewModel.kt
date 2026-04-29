@@ -3,6 +3,8 @@ package com.billfolder.android.ui.screens.cards
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
+import com.billfolder.android.data.dto.CreditCardAccountResponse
+import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import com.billfolder.android.data.repository.CardsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,10 +17,14 @@ import java.io.IOException
 import javax.inject.Inject
 
 /**
- * Form de cadastrar cartão. closingDay e dueDay são entrados como string
- * (TextField numérico) e validados como inteiros 1..31. Pra MVP não
- * forçamos diferença entre os dois, embora na prática sempre são —
- * backend valida o resto.
+ * Form de "novo/editar cartão". closingDay e dueDay são entrados como
+ * string (TextField numérico) e validados como inteiros 1..31.
+ *
+ * Modos:
+ *  - Create (editingId == null): POST.
+ *  - Edit (editingId != null): PATCH parcial. Backend não recalcula
+ *    statements/installments — mudar closingDay/dueDay afeta só
+ *    lançamentos futuros. Sheet avisa o user disso visualmente.
  */
 data class AddCreditCardFormState(
     val name: String = "",
@@ -30,6 +36,8 @@ data class AddCreditCardFormState(
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val savedSuccessfully: Boolean = false,
+
+    val editingId: String? = null,
 )
 
 @HiltViewModel
@@ -45,6 +53,26 @@ class AddCreditCardViewModel @Inject constructor(
     fun onBrandChange(value: String) = _state.update { it.copy(brand = value) }
     fun onClosingDayChange(value: String) = _state.update { it.copy(closingDay = value) }
     fun onDueDayChange(value: String) = _state.update { it.copy(dueDay = value) }
+
+    /**
+     * Preenche o form com um cartão existente — modo edit. Idempotente
+     * (checa editingId pra não sobrescrever campos já editados num
+     * recompose acidental do sheet).
+     */
+    fun prefill(card: CreditCardAccountResponse) {
+        if (_state.value.editingId == card.id) return
+        _state.update {
+            it.copy(
+                editingId = card.id,
+                name = card.name,
+                issuerBank = card.issuerBank.orEmpty(),
+                brand = card.brand.orEmpty(),
+                closingDay = card.closingDay.toString(),
+                dueDay = card.dueDay.toString(),
+                errorMessage = null,
+            )
+        }
+    }
 
     fun submit(
         nameEmptyMessage: String,
@@ -66,18 +94,32 @@ class AddCreditCardViewModel @Inject constructor(
             return
         }
 
-        val request = CreateCreditCardAccountRequest(
-            name = current.name.trim(),
-            issuerBank = current.issuerBank.takeIf { it.isNotBlank() }?.trim(),
-            brand = current.brand.takeIf { it.isNotBlank() }?.trim(),
-            closingDay = closingDay!!,
-            dueDay = dueDay!!,
-        )
-
         _state.update { it.copy(isSaving = true, errorMessage = null) }
+
         viewModelScope.launch {
             try {
-                cardsRepository.createCard(request)
+                if (current.editingId != null) {
+                    // PATCH parcial. Mandamos todos os campos (backend trata
+                    // null em cada um). issuerBank/brand viram null se string
+                    // vazia — convenção do backend pra "limpar".
+                    val request = UpdateCreditCardAccountRequest(
+                        name = current.name.trim(),
+                        issuerBank = current.issuerBank.takeIf { it.isNotBlank() }?.trim(),
+                        brand = current.brand.takeIf { it.isNotBlank() }?.trim(),
+                        closingDay = closingDay,
+                        dueDay = dueDay,
+                    )
+                    cardsRepository.updateCard(current.editingId, request)
+                } else {
+                    val request = CreateCreditCardAccountRequest(
+                        name = current.name.trim(),
+                        issuerBank = current.issuerBank.takeIf { it.isNotBlank() }?.trim(),
+                        brand = current.brand.takeIf { it.isNotBlank() }?.trim(),
+                        closingDay = closingDay!!,
+                        dueDay = dueDay!!,
+                    )
+                    cardsRepository.createCard(request)
+                }
                 _state.update { it.copy(isSaving = false, savedSuccessfully = true) }
             } catch (e: HttpException) {
                 _state.update { it.copy(isSaving = false, errorMessage = "Erro do servidor (HTTP ${e.code()}).") }

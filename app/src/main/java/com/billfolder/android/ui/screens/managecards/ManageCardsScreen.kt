@@ -114,6 +114,7 @@ fun ManageCardsScreen(
                     state = s,
                     onAddCard = { showAddSheet = true },
                     onRequestDelete = viewModel::requestDelete,
+                    onRequestEdit = viewModel::requestEdit,
                     onCardClick = onNavigateToCardEntries,
                 )
             }
@@ -135,6 +136,20 @@ fun ManageCardsScreen(
                 onCancel = viewModel::cancelDelete,
             )
         }
+
+        // Sheet de editar cartão (modo edit). Reusa AddCreditCardSheet
+        // com `existing`. PATCH é parcial; mudanças em closingDay/dueDay
+        // afetam só lançamentos futuros (sheet exibe hint sobre isso).
+        if (current is ManageCardsUiState.Content && current.editing != null) {
+            AddCreditCardSheet(
+                existing = current.editing,
+                onDismiss = viewModel::cancelEdit,
+                onSaved = {
+                    viewModel.cancelEdit()
+                    viewModel.refresh()
+                },
+            )
+        }
     }
 }
 
@@ -143,6 +158,7 @@ private fun Content(
     state: ManageCardsUiState.Content,
     onAddCard: () -> Unit,
     onRequestDelete: (CreditCardAccountResponse) -> Unit,
+    onRequestEdit: (CreditCardAccountResponse) -> Unit,
     onCardClick: (cardId: String) -> Unit,
 ) {
     if (state.cards.isEmpty()) {
@@ -157,10 +173,10 @@ private fun Content(
     ) {
         items(state.cards, key = { it.id }) { card ->
             SwipeToActionRow(
-                isPending = state.pendingDelete?.id == card.id,
+                isPending = state.pendingDelete?.id == card.id ||
+                    state.editing?.id == card.id,
                 onDelete = { onRequestDelete(card) },
-                // Edit ainda não — backend não tem PATCH /credit-card-accounts.
-                // Quando entrar, plugar `onEdit = { onRequestEdit(card) }` aqui.
+                onEdit = { onRequestEdit(card) },
             ) {
                 CreditCardRow(
                     card = card,

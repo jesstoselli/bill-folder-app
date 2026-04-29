@@ -150,6 +150,7 @@
 
     <!-- Add Credit Card (sheet) — cadastrar cartão -->
     <string name="add_card_title">novo cartão</string>
+    <string name="add_card_title_edit">editar cartão</string>
     <string name="add_card_field_name">nome (ex: Itaú Personnalité)</string>
     <string name="add_card_field_issuer_bank">banco emissor (opcional)</string>
     <string name="add_card_field_brand">bandeira (opcional)</string>
@@ -158,6 +159,8 @@
     <string name="add_card_validation_name">Informe o nome do cartão.</string>
     <string name="add_card_validation_closing_day">Dia de fechamento entre 1 e 31.</string>
     <string name="add_card_validation_due_day">Dia de vencimento entre 1 e 31.</string>
+    <!-- Aviso em modo edit, mostrado abaixo dos campos de dia -->
+    <string name="add_card_edit_days_hint">mudar fechamento ou vencimento afeta apenas lançamentos futuros — faturas e compras existentes mantêm os dias originais.</string>
 
     <!-- Add / Edit Card Entry (sheet) — compra no cartão -->
     <string name="add_card_entry_title">nova compra no cartão</string>

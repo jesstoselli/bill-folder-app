@@ -20,22 +20,36 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
+import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTextField
 import com.billfolder.android.ui.components.BillFolderTransactionSheet
 
 /**
- * Sheet de cadastrar novo cartão. Diferente do AddCardEntrySheet
- * (que registra uma compra), este cria a entidade CreditCardAccount —
- * é o equivalente a "Add Bank Account" do tela de Manage.
+ * Sheet de "novo/editar cartão". Diferente do AddCardEntrySheet (que
+ * registra uma compra), este cria/atualiza a entidade CreditCardAccount.
+ *
+ * Modos:
+ *  - Create (existing == null): POST com todos os campos.
+ *  - Edit (existing != null): PATCH parcial. Todos os campos editáveis,
+ *    mas exibimos hint avisando que mudar fechamento/vencimento afeta
+ *    apenas lançamentos futuros (statements/installments existentes
+ *    ficam intactos — backend não recalcula).
  */
 @Composable
 fun AddCreditCardSheet(
     onDismiss: () -> Unit,
     onSaved: () -> Unit,
+    existing: CreditCardAccountResponse? = null,
     viewModel: AddCreditCardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(existing) {
+        if (existing != null) {
+            viewModel.prefill(existing)
+        }
+    }
 
     val nameEmpty = stringResource(R.string.add_card_validation_name)
     val closingInvalid = stringResource(R.string.add_card_validation_closing_day)
@@ -48,14 +62,26 @@ fun AddCreditCardSheet(
         }
     }
 
+    val isEditing = state.editingId != null
+    val title = if (isEditing) {
+        stringResource(R.string.add_card_title_edit)
+    } else {
+        stringResource(R.string.add_card_title)
+    }
+    val ctaText = if (isEditing) {
+        stringResource(R.string.sheet_update_cta)
+    } else {
+        stringResource(R.string.sheet_save_cta)
+    }
+
     BillFolderTransactionSheet(
-        title = stringResource(R.string.add_card_title),
+        title = title,
         onDismiss = onDismiss,
         isSaving = state.isSaving,
         errorMessage = state.errorMessage,
         footer = {
             BillFolderPrimaryButton(
-                text = stringResource(R.string.sheet_save_cta),
+                text = ctaText,
                 onClick = {
                     viewModel.submit(
                         nameEmptyMessage = nameEmpty,
@@ -114,6 +140,17 @@ fun AddCreditCardSheet(
                 enabled = !state.isSaving,
                 imeAction = ImeAction.Done,
                 modifier = Modifier.weight(1f),
+            )
+        }
+
+        // Em modo edit, avisa o user que mudar fechamento/vencimento não
+        // mexe em statements/compras já existentes — só novos lançamentos
+        // usam os dias atualizados.
+        if (isEditing) {
+            Text(
+                text = stringResource(R.string.add_card_edit_days_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
