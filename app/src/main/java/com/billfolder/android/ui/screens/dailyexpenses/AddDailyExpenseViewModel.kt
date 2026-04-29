@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CheckingAccountResponse
 import com.billfolder.android.data.dto.CreateDailyExpenseRequest
+import com.billfolder.android.data.dto.DailyExpenseResponse
+import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import com.billfolder.android.data.repository.DailyExpensesRepository
 import com.billfolder.android.data.repository.ReferenceDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,14 +21,19 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 /**
- * Estado do formulário "nova despesa avulsa".
+ * Estado do formulário "nova/editar despesa avulsa".
+ *
+ * O mesmo VM serve pros dois modos (create e edit) — o sheet diferencia
+ * só pelo `existing` que recebe; quando não-null, chama `prefill()` no
+ * VM e o submit vira PATCH em vez de POST.
  *
  * - Campos editáveis pela UI (date, label, amount, etc).
  * - References (categories, accounts) carregadas no init e expostas
  *   pra UI montar dropdowns.
- * - `submission` controla loading + erros do POST.
- * - `savedSuccessfully` vira true quando o backend confirma criação;
- *   a UI usa pra fechar o sheet e disparar refresh da lista.
+ * - `submission` controla loading + erros do POST/PATCH.
+ * - `savedSuccessfully` vira true quando o backend confirma; UI usa
+ *   pra fechar o sheet e disparar refresh da lista.
+ * - `editingId`: quando não-null, submit faz PATCH desse id em vez de POST.
  */
 data class AddDailyExpenseFormState(
     // Editáveis
@@ -46,6 +53,9 @@ data class AddDailyExpenseFormState(
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val savedSuccessfully: Boolean = false,
+
+    // Edit mode
+    val editingId: String? = null,
 )
 
 @HiltViewModel
@@ -70,6 +80,28 @@ class AddDailyExpenseViewModel @Inject constructor(
     fun onAccountChange(id: String) = _state.update { it.copy(selectedAccountId = id) }
     fun onNotesChange(value: String) = _state.update { it.copy(notes = value) }
 
+    /**
+     * Preenche o form com os dados de uma despesa existente — modo edit.
+     * O sheet chama uma vez no LaunchedEffect(existing). Idempotente:
+     * se o `editingId` já bate, não faz nada (evita resetar campos que
+     * o user já modificou se a sheet recompor sem motivo).
+     */
+    fun prefill(item: DailyExpenseResponse) {
+        if (_state.value.editingId == item.id) return
+        _state.update {
+            it.copy(
+                editingId = item.id,
+                date = item.date,
+                label = item.label,
+                amount = item.amount.toBrlInputString(),
+                selectedCategoryId = item.categoryId,
+                selectedAccountId = item.accountId,
+                notes = item.notes.orEmpty(),
+                errorMessage = null,
+            )
+        }
+    }
+
     // ---- Submit ----
 
     fun submit(
@@ -92,19 +124,35 @@ class AddDailyExpenseViewModel @Inject constructor(
             return
         }
 
-        val request = CreateDailyExpenseRequest(
-            date = current.date,
-            label = current.label.trim(),
-            amount = parseAmount(current.amount)!!,
-            categoryId = current.selectedCategoryId!!,
-            accountId = current.selectedAccountId!!,
-            notes = current.notes.takeIf { it.isNotBlank() }?.trim(),
-        )
-
         _state.update { it.copy(isSaving = true, errorMessage = null) }
+
         viewModelScope.launch {
             try {
-                dailyExpensesRepository.create(request)
+                if (current.editingId != null) {
+                    // PATCH parcial. Mandamos todos os campos que o user
+                    // pode editar — backend trata null em cada um. Notes
+                    // fica string vazia se o user limpou (convenção
+                    // documentada no backend).
+                    val request = UpdateDailyExpenseRequest(
+                        date = current.date,
+                        label = current.label.trim(),
+                        amount = parseAmount(current.amount),
+                        categoryId = current.selectedCategoryId,
+                        accountId = current.selectedAccountId,
+                        notes = current.notes.trim(),
+                    )
+                    dailyExpensesRepository.update(current.editingId, request)
+                } else {
+                    val request = CreateDailyExpenseRequest(
+                        date = current.date,
+                        label = current.label.trim(),
+                        amount = parseAmount(current.amount)!!,
+                        categoryId = current.selectedCategoryId!!,
+                        accountId = current.selectedAccountId!!,
+                        notes = current.notes.takeIf { it.isNotBlank() }?.trim(),
+                    )
+                    dailyExpensesRepository.create(request)
+                }
                 _state.update { it.copy(isSaving = false, savedSuccessfully = true) }
             } catch (e: HttpException) {
                 _state.update { it.copy(isSaving = false, errorMessage = "Erro do servidor (HTTP ${e.code()}).") }
@@ -127,7 +175,9 @@ class AddDailyExpenseViewModel @Inject constructor(
                     it.copy(
                         categories = categories,
                         accounts = accounts,
-                        // Pré-seleciona a conta primária se houver — UX nice-to-have
+                        // Pré-seleciona a conta primária se houver — UX nice-to-have.
+                        // Em modo edit (editingId != null), respeita o que veio do
+                        // prefill (já tem selectedAccountId).
                         selectedAccountId = it.selectedAccountId
                             ?: accounts.firstOrNull { acc -> acc.isPrimary }?.id
                             ?: accounts.firstOrNull()?.id,
@@ -151,4 +201,11 @@ class AddDailyExpenseViewModel @Inject constructor(
      */
     private fun parseAmount(input: String): Double? =
         input.replace(',', '.').toDoubleOrNull()
+
+    /**
+     * Formata o amount pra string de input do MoneyField. Usa vírgula
+     * como decimal pra ficar consistente com o que o user digita em pt-BR.
+     */
+    private fun Double.toBrlInputString(): String =
+        "%.2f".format(this).replace('.', ',')
 }

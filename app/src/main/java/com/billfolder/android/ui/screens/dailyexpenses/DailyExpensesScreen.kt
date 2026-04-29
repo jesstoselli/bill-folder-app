@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -22,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +46,7 @@ import com.billfolder.android.R
 import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTotalCard
+import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.dailyexpenses.components.DailyExpenseRow
 import com.billfolder.android.ui.screens.dailyexpenses.components.DayHeader
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
@@ -118,22 +122,43 @@ fun DailyExpensesScreen(
                     onRetry = viewModel::refresh,
                 )
                 is DailyExpensesUiState.Content -> DailyExpensesContent(
-                    expenses = s.expenses,
-                    cycleStart = s.cycle.startDate,
-                    cycleEnd = s.cycle.endDate,
-                    cycleLabel = s.cycle.label,
+                    state = s,
                     onAddExpense = { showAddSheet = true },
+                    onRequestDelete = viewModel::requestDelete,
+                    onRequestEdit = viewModel::requestEdit,
                 )
             }
         }
 
-        // Sheet de adicionar avulsa — irmão do Box do conteúdo principal.
-        // ModalBottomSheet do M3 já é overlay próprio, não precisa estar
-        // dentro do Box.
+        // Sheet de adicionar (modo create). ModalBottomSheet do M3 já é
+        // overlay próprio, não precisa estar dentro do Box.
         if (showAddSheet) {
             AddDailyExpenseSheet(
                 onDismiss = { showAddSheet = false },
                 onSaved = { viewModel.refresh() },
+            )
+        }
+
+        // Sheet de editar (modo edit) — visível enquanto editing != null
+        // no VM. Reusa o mesmo composable, só passa `existing`.
+        val current = state
+        if (current is DailyExpensesUiState.Content && current.editing != null) {
+            AddDailyExpenseSheet(
+                existing = current.editing,
+                onDismiss = viewModel::cancelEdit,
+                onSaved = {
+                    viewModel.cancelEdit()
+                    viewModel.refresh()
+                },
+            )
+        }
+
+        // Dialog de confirmação de delete — atrelado ao pendingDelete do VM.
+        if (current is DailyExpensesUiState.Content && current.pendingDelete != null) {
+            DeleteDailyExpenseDialog(
+                expenseLabel = current.pendingDelete.label,
+                onConfirm = viewModel::confirmDelete,
+                onCancel = viewModel::cancelDelete,
             )
         }
     }
@@ -141,12 +166,12 @@ fun DailyExpensesScreen(
 
 @Composable
 private fun DailyExpensesContent(
-    expenses: List<DailyExpenseResponse>,
-    cycleStart: String,
-    cycleEnd: String,
-    cycleLabel: String,
+    state: DailyExpensesUiState.Content,
     onAddExpense: () -> Unit,
+    onRequestDelete: (DailyExpenseResponse) -> Unit,
+    onRequestEdit: (DailyExpenseResponse) -> Unit,
 ) {
+    val expenses = state.expenses
     val total = expenses.sumOf { it.amount }
     // Agrupa por dia mantendo a ordem (mais recente primeiro porque
     // a lista vem ordenada do VM).
@@ -159,9 +184,9 @@ private fun DailyExpensesContent(
     ) {
         item {
             CycleNavigator(
-                cycleLabel = cycleLabel,
-                startIso = cycleStart,
-                endIso = cycleEnd,
+                cycleLabel = state.cycle.label,
+                startIso = state.cycle.startDate,
+                endIso = state.cycle.endDate,
                 onPrevious = { /* TODO navegação de ciclo */ },
                 onNext = { /* TODO */ },
             )
@@ -185,7 +210,14 @@ private fun DailyExpensesContent(
                     )
                 }
                 items(dayExpenses, key = { it.id }) { expense ->
-                    DailyExpenseRow(expense = expense)
+                    SwipeToActionRow(
+                        isPending = state.pendingDelete?.id == expense.id ||
+                            state.editing?.id == expense.id,
+                        onDelete = { onRequestDelete(expense) },
+                        onEdit = { onRequestEdit(expense) },
+                    ) {
+                        DailyExpenseRow(expense = expense)
+                    }
                 }
             }
         }
@@ -193,6 +225,46 @@ private fun DailyExpensesContent(
         // Espaço pro FAB não cobrir o último item.
         item { Spacer(Modifier.height(80.dp)) }
     }
+}
+
+/**
+ * Dialog de confirmação de delete. Mesmo padrão do DeleteCardDialog em
+ * ManageCardsScreen: confirm botão em vermelho, dismiss em texto neutro,
+ * tap fora do dialog = cancel.
+ */
+@Composable
+private fun DeleteDailyExpenseDialog(
+    expenseLabel: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(text = stringResource(R.string.daily_delete_dialog_title))
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.daily_delete_dialog_message, expenseLabel),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(stringResource(R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
 }
 
 // ----------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
+import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.ui.components.BillFolderDateField
 import com.billfolder.android.ui.components.BillFolderDropdown
 import com.billfolder.android.ui.components.BillFolderMoneyField
@@ -23,13 +24,18 @@ import com.billfolder.android.ui.components.BillFolderTransactionSheet
 import com.billfolder.android.ui.components.DropdownOption
 
 /**
- * Sheet de "nova despesa avulsa". Usa o BillFolderTransactionSheet
+ * Sheet de "nova / editar despesa avulsa". Usa o BillFolderTransactionSheet
  * genérico — todo o boilerplate de bottom sheet (drag handle, header,
  * dismiss) vive lá. Aqui só o conteúdo específico do form.
  *
+ * Modos:
+ *  - Create (existing == null): título "nova...", CTA "adicionar", POST.
+ *  - Edit (existing != null): título "editar...", CTA "atualizar", PATCH.
+ *    O `prefill()` no VM é disparado pelo LaunchedEffect(existing).
+ *
  * Fluxo:
- *  - Usuário preenche os campos
- *  - Clica "adicionar" → ViewModel valida + POST
+ *  - Usuário preenche/edita os campos
+ *  - Clica CTA → ViewModel valida + POST/PATCH
  *  - Backend confirma → savedSuccessfully=true → caller fecha sheet
  *    e dispara refresh da lista
  */
@@ -37,9 +43,18 @@ import com.billfolder.android.ui.components.DropdownOption
 fun AddDailyExpenseSheet(
     onDismiss: () -> Unit,
     onSaved: () -> Unit,
+    existing: DailyExpenseResponse? = null,
     viewModel: AddDailyExpenseViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+
+    // Em modo edit, prefil os campos uma vez quando a sheet monta.
+    // O prefill é idempotente no VM (checa editingId).
+    LaunchedEffect(existing) {
+        if (existing != null) {
+            viewModel.prefill(existing)
+        }
+    }
 
     // Mensagens de validação resolvidas no escopo composable pra passar
     // pro VM, que não tem acesso a Context.
@@ -56,14 +71,26 @@ fun AddDailyExpenseSheet(
         }
     }
 
+    val isEditing = state.editingId != null
+    val title = if (isEditing) {
+        stringResource(R.string.add_daily_title_edit)
+    } else {
+        stringResource(R.string.add_daily_title)
+    }
+    val ctaText = if (isEditing) {
+        stringResource(R.string.sheet_update_cta)
+    } else {
+        stringResource(R.string.sheet_save_cta)
+    }
+
     BillFolderTransactionSheet(
-        title = stringResource(R.string.add_daily_title),
+        title = title,
         onDismiss = onDismiss,
         isSaving = state.isSaving,
         errorMessage = state.errorMessage,
         footer = {
             BillFolderPrimaryButton(
-                text = stringResource(R.string.sheet_save_cta),
+                text = ctaText,
                 onClick = {
                     viewModel.submit(
                         labelEmptyMessage = labelEmpty,

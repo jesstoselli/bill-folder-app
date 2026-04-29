@@ -103,8 +103,9 @@
     <string name="sheet_save_cta">adicionar</string>
     <string name="sheet_saving_cta">salvando…</string>
 
-    <!-- Add Daily Expense (sheet) -->
+    <!-- Add / Edit Daily Expense (sheet) -->
     <string name="add_daily_title">nova despesa avulsa</string>
+    <string name="add_daily_title_edit">editar despesa avulsa</string>
     <string name="add_daily_field_date">data</string>
     <string name="add_daily_field_label">descrição</string>
     <string name="add_daily_field_amount">valor</string>
@@ -115,6 +116,13 @@
     <string name="add_daily_validation_amount_invalid">Valor precisa ser maior que zero.</string>
     <string name="add_daily_validation_category_empty">Escolha uma categoria.</string>
     <string name="add_daily_validation_account_empty">Escolha uma conta.</string>
+
+    <!-- Delete Daily Expense (dialog) -->
+    <string name="daily_delete_dialog_title">deletar despesa?</string>
+    <string name="daily_delete_dialog_message">isso vai apagar \"%1$s\" permanentemente. essa ação não pode ser desfeita.</string>
+
+    <!-- CTAs comuns de sheet (genéricos, reusados por todas) -->
+    <string name="sheet_update_cta">atualizar</string>
 
     <!-- Cards — consumo (despesas no cartão, do drawer principal) -->
     <string name="cards_screen_title">despesas no cartão</string>
