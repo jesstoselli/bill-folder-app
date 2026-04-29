@@ -21,6 +21,7 @@ import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
 import com.billfolder.android.data.dto.SignupRequest
+import com.billfolder.android.data.dto.UpdateCardEntryRequest
 import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
@@ -204,4 +205,18 @@ interface BillFolderApi {
     suspend fun createCardEntry(
         @Body request: CreateCardEntryRequest,
     ): CardEntryResponse
+
+    /**
+     * PATCH limitado: backend só aceita label/categoryId/notes. Outros campos
+     * (date, amount, parcelas) precisariam recalcular installments — fica
+     * pra endpoint dedicado no futuro.
+     */
+    @PATCH("card-entries/{id}")
+    suspend fun updateCardEntry(
+        @Path("id") id: String,
+        @Body request: UpdateCardEntryRequest,
+    ): CardEntryResponse
+
+    @DELETE("card-entries/{id}")
+    suspend fun deleteCardEntry(@Path("id") id: String): Response<Unit>
 }

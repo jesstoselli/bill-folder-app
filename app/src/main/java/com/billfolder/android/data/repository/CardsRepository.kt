@@ -5,6 +5,7 @@ import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
+import com.billfolder.android.data.dto.UpdateCardEntryRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,4 +37,24 @@ class CardsRepository @Inject constructor(
 
     suspend fun createEntry(request: CreateCardEntryRequest): CardEntryResponse =
         api.createCardEntry(request)
+
+    /**
+     * PATCH limitado a label/categoria/notes — backend não aceita mudar
+     * valor/parcelas/data (recálculo de installments fica pra endpoint
+     * dedicado no futuro).
+     */
+    suspend fun updateEntry(id: String, request: UpdateCardEntryRequest): CardEntryResponse =
+        api.updateCardEntry(id, request)
+
+    /**
+     * Backend retorna 204 em sucesso. Importante: deletar uma entry
+     * parcelada remove TODAS as installments associadas e recalcula
+     * statements futuros — backend lida com a cascata.
+     */
+    suspend fun deleteEntry(id: String) {
+        val response = api.deleteCardEntry(id)
+        if (!response.isSuccessful) {
+            throw retrofit2.HttpException(response)
+        }
+    }
 }

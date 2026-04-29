@@ -79,3 +79,20 @@ data class CreateCardEntryRequest(
     @SerialName("categoryId")         val categoryId: String,
     @SerialName("notes")              val notes: String? = null,
 )
+
+/**
+ * Atualização limitada — backend (UpdateCardEntryRequest .NET) só aceita
+ * label, categoria e notes. Mudar valor/parcelas/data exigiria recalcular
+ * todas as installments e movê-las entre statements/faturas, operação
+ * complexa que merece endpoint dedicado no futuro.
+ *
+ * Na UI isso significa: em modo edit, os campos cardId/purchaseDate/
+ * totalAmount/installmentsCount ficam disabled — só label, categoria
+ * e notes podem mudar.
+ */
+@Serializable
+data class UpdateCardEntryRequest(
+    @SerialName("label")      val label: String? = null,
+    @SerialName("categoryId") val categoryId: String? = null,
+    @SerialName("notes")      val notes: String? = null,
+)
