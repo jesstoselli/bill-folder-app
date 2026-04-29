@@ -14,6 +14,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
+import com.billfolder.android.data.dto.IncomeEntryResponse
 import com.billfolder.android.ui.components.BillFolderDateField
 import com.billfolder.android.ui.components.BillFolderDropdown
 import com.billfolder.android.ui.components.BillFolderMoneyField
@@ -21,14 +22,30 @@ import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTransactionSheet
 import com.billfolder.android.ui.components.DropdownOption
 
+/**
+ * Sheet de "novo/editar recebimento". Quando `existing` é não-null,
+ * sheet entra em modo edit: prefill via VM, título "editar...",
+ * CTA "atualizar", submit faz PATCH em vez de POST.
+ *
+ * Não mexe em status/actual* — o caminho de confirmar recebimento
+ * continua sendo o `ConfirmIncomeSheet` (acessado via tap em entry
+ * expected/late, fora do swipe-right).
+ */
 @Composable
 fun AddIncomeEntrySheet(
     onDismiss: () -> Unit,
     onSaved: () -> Unit,
+    existing: IncomeEntryResponse? = null,
     viewModel: AddIncomeEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     val amountInvalid = stringResource(R.string.add_daily_validation_amount_invalid)
+
+    LaunchedEffect(existing) {
+        if (existing != null) {
+            viewModel.prefill(existing)
+        }
+    }
 
     LaunchedEffect(state.savedSuccessfully) {
         if (state.savedSuccessfully) {
@@ -37,14 +54,26 @@ fun AddIncomeEntrySheet(
         }
     }
 
+    val isEditing = state.editingId != null
+    val title = if (isEditing) {
+        stringResource(R.string.add_income_title_edit)
+    } else {
+        stringResource(R.string.add_income_title)
+    }
+    val ctaText = if (isEditing) {
+        stringResource(R.string.sheet_update_cta)
+    } else {
+        stringResource(R.string.sheet_save_cta)
+    }
+
     BillFolderTransactionSheet(
-        title = stringResource(R.string.add_income_title),
+        title = title,
         onDismiss = onDismiss,
         isSaving = state.isSaving,
         errorMessage = state.errorMessage,
         footer = {
             BillFolderPrimaryButton(
-                text = stringResource(R.string.sheet_save_cta),
+                text = ctaText,
                 onClick = { viewModel.submit(amountInvalid) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isLoadingReferences,

@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -25,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -44,6 +47,7 @@ import com.billfolder.android.data.dto.IncomeEntryResponse
 import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTotalCard
+import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.screens.income.components.IncomeEntryRow
 import com.billfolder.android.ui.screens.income.components.IncomeSourceRow
@@ -121,13 +125,11 @@ fun IncomeScreen(
                     onRetry = viewModel::refresh,
                 )
                 is IncomeUiState.Content -> IncomeContent(
-                    entries = s.entries,
-                    sources = s.sources,
-                    cycleStart = s.cycle.startDate,
-                    cycleEnd = s.cycle.endDate,
-                    cycleLabel = s.cycle.label,
+                    state = s,
                     onAddEntry = { showAddSheet = true },
                     onConfirmReceive = { entry -> confirmingEntry = entry },
+                    onRequestDelete = viewModel::requestDelete,
+                    onRequestEdit = viewModel::requestEdit,
                 )
             }
         }
@@ -146,19 +148,43 @@ fun IncomeScreen(
                 onSaved = { viewModel.refresh() },
             )
         }
+
+        // Sheet de editar entry (modo edit) — visível enquanto editing != null.
+        // Reusa AddIncomeEntrySheet com `existing` preenchido. PATCH não toca
+        // em status/actual* (esse fluxo é do ConfirmIncomeSheet acima).
+        val current = state
+        if (current is IncomeUiState.Content && current.editing != null) {
+            AddIncomeEntrySheet(
+                existing = current.editing,
+                onDismiss = viewModel::cancelEdit,
+                onSaved = {
+                    viewModel.cancelEdit()
+                    viewModel.refresh()
+                },
+            )
+        }
+
+        // Dialog de confirmação de delete da entry — atrelado ao pendingDelete.
+        if (current is IncomeUiState.Content && current.pendingDelete != null) {
+            DeleteIncomeEntryDialog(
+                onConfirm = viewModel::confirmDelete,
+                onCancel = viewModel::cancelDelete,
+            )
+        }
     }
 }
 
 @Composable
 private fun IncomeContent(
-    entries: List<IncomeEntryResponse>,
-    sources: List<IncomeSourceResponse>,
-    cycleStart: String,
-    cycleEnd: String,
-    cycleLabel: String,
+    state: IncomeUiState.Content,
     onAddEntry: () -> Unit,
     onConfirmReceive: (IncomeEntryResponse) -> Unit,
+    onRequestDelete: (IncomeEntryResponse) -> Unit,
+    onRequestEdit: (IncomeEntryResponse) -> Unit,
 ) {
+    val entries = state.entries
+    val sources = state.sources
+
     // Total esperado: soma todos os entries do ciclo (exceto notOccurred)
     val expectedTotal = entries
         .filter { !it.status.equals("notOccurred", ignoreCase = true) }
@@ -176,9 +202,9 @@ private fun IncomeContent(
     ) {
         item {
             CycleNavigator(
-                cycleLabel = cycleLabel,
-                startIso = cycleStart,
-                endIso = cycleEnd,
+                cycleLabel = state.cycle.label,
+                startIso = state.cycle.startDate,
+                endIso = state.cycle.endDate,
                 onPrevious = { /* TODO */ },
                 onNext = { /* TODO */ },
             )
@@ -205,19 +231,31 @@ private fun IncomeContent(
             items(entries, key = { it.id }) { entry ->
                 val canConfirm = entry.status.equals("expected", ignoreCase = true) ||
                     entry.status.equals("late", ignoreCase = true)
-                IncomeEntryRow(
-                    entry = entry,
-                    onClick = if (canConfirm) {
-                        { onConfirmReceive(entry) }
-                    } else {
-                        null
-                    },
-                )
+                SwipeToActionRow(
+                    isPending = state.pendingDelete?.id == entry.id ||
+                        state.editing?.id == entry.id,
+                    onDelete = { onRequestDelete(entry) },
+                    onEdit = { onRequestEdit(entry) },
+                ) {
+                    // Tap em entries expected/late continua abrindo
+                    // ConfirmIncomeSheet — swipes são ortogonais ao tap.
+                    IncomeEntryRow(
+                        entry = entry,
+                        onClick = if (canConfirm) {
+                            { onConfirmReceive(entry) }
+                        } else {
+                            null
+                        },
+                    )
+                }
             }
         }
 
         if (sources.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.income_section_recurring)) }
+            // Sources NÃO entram em swipe nessa onda — vão na Onda 6
+            // (CRUD de IncomeSource tem regras próprias: deletar fonte
+            // afeta entries futuras, edit pode mudar dia esperado, etc).
             items(sources, key = { it.id }) { source ->
                 IncomeSourceRow(source = source)
             }
@@ -225,6 +263,44 @@ private fun IncomeContent(
 
         item { Spacer(Modifier.height(80.dp)) }
     }
+}
+
+/**
+ * Dialog de confirmação de delete de IncomeEntry. Usa mensagem genérica
+ * (sem interpolar label/source) — IncomeEntry não tem um nome curto
+ * óbvio; o user já tem contexto do swipe pra saber qual é. Mesmo padrão
+ * visual dos outros delete dialogs.
+ */
+@Composable
+private fun DeleteIncomeEntryDialog(
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(text = stringResource(R.string.income_entry_delete_dialog_title))
+        },
+        text = {
+            Text(text = stringResource(R.string.income_entry_delete_dialog_message))
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(stringResource(R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
 }
 
 @Composable

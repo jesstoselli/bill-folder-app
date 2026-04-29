@@ -189,13 +189,18 @@
     <!-- Subtítulo de IncomeSource: ex: "todo dia 5" -->
     <string name="income_source_recurring_format">todo dia %1$d</string>
 
-    <!-- Add Income Entry (sheet) -->
+    <!-- Add / Edit Income Entry (sheet) -->
     <string name="add_income_title">novo recebimento</string>
+    <string name="add_income_title_edit">editar recebimento</string>
     <string name="add_income_field_expected_date">previsão</string>
     <string name="add_income_field_amount">valor esperado</string>
     <string name="add_income_field_source">vincular a uma fonte (opcional)</string>
     <string name="add_income_source_none">avulso (sem fonte)</string>
     <string name="add_income_field_notes">notas (opcional)</string>
+
+    <!-- Delete Income Entry (dialog) -->
+    <string name="income_entry_delete_dialog_title">deletar recebimento?</string>
+    <string name="income_entry_delete_dialog_message">isso vai apagar esse recebimento permanentemente. essa ação não pode ser desfeita.</string>
 
     <!-- Confirm Income Received (sheet) -->
     <string name="confirm_income_title">confirmar recebimento</string>
