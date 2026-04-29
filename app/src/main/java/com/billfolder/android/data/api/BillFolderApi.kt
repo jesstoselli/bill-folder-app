@@ -21,6 +21,7 @@ import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
 import com.billfolder.android.data.dto.SignupRequest
+import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
 import retrofit2.Response
@@ -108,6 +109,15 @@ interface BillFolderApi {
     suspend fun createDailyExpense(
         @Body request: CreateDailyExpenseRequest,
     ): DailyExpenseResponse
+
+    @PATCH("daily-expenses/{id}")
+    suspend fun updateDailyExpense(
+        @Path("id") id: String,
+        @Body request: UpdateDailyExpenseRequest,
+    ): DailyExpenseResponse
+
+    @DELETE("daily-expenses/{id}")
+    suspend fun deleteDailyExpense(@Path("id") id: String): Response<Unit>
 
     // ------------------------------------------------------------------------
     // Expenses (despesas com vencimento — luz, aluguel, etc)

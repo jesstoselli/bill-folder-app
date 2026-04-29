@@ -3,6 +3,7 @@ package com.billfolder.android.data.repository
 import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.CreateDailyExpenseRequest
 import com.billfolder.android.data.dto.DailyExpenseResponse
+import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,4 +24,20 @@ class DailyExpensesRepository @Inject constructor(
 
     suspend fun create(request: CreateDailyExpenseRequest): DailyExpenseResponse =
         api.createDailyExpense(request)
+
+    suspend fun update(
+        id: String,
+        request: UpdateDailyExpenseRequest,
+    ): DailyExpenseResponse = api.updateDailyExpense(id, request)
+
+    /**
+     * Backend retorna 204 em sucesso; convertemos non-2xx em HttpException
+     * pra o caller propagar pra UI (mesmo padrão do CardsRepository.deleteCard).
+     */
+    suspend fun delete(id: String) {
+        val response = api.deleteDailyExpense(id)
+        if (!response.isSuccessful) {
+            throw retrofit2.HttpException(response)
+        }
+    }
 }
