@@ -35,6 +35,17 @@ import javax.inject.Inject
  * Cartões + entries carregadas em paralelo. Trocar de cartão no carousel
  * só atualiza o `selectedCardId` no estado — entries já estão todas
  * carregadas e filtramos local.
+ *
+ * Estados de ação por entry:
+ *  - pendingDelete: entry em swipe-left aguardando confirmação no AlertDialog
+ *  - editing: entry em swipe-right com sheet de edit aberta
+ *  - deletingId: id da entry sendo deletada (entre confirm e resposta)
+ *
+ * Cascata de delete: deletar uma entry parcelada remove TODAS as
+ * installments associadas e recalcula statements futuros — o backend
+ * lida com isso. CardsScreen não mostra statements (só compras), então
+ * a remoção otimística local da entry é suficiente. Outras telas (Home)
+ * vão refletir as mudanças no próximo refresh.
  */
 sealed interface CardsUiState {
     data object Loading : CardsUiState
@@ -45,6 +56,9 @@ sealed interface CardsUiState {
         val cards: List<CreditCardAccountResponse>,
         val allEntries: List<CardEntryResponse>,
         val selectedCardId: String,
+        val pendingDelete: CardEntryResponse? = null,
+        val editing: CardEntryResponse? = null,
+        val deletingId: String? = null,
     ) : CardsUiState
     data class Error(val message: String) : CardsUiState
 }
@@ -83,6 +97,89 @@ class CardsViewModel @Inject constructor(
         _state.update { current ->
             if (current is CardsUiState.Content) {
                 current.copy(selectedCardId = cardId)
+            } else {
+                current
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Delete flow (swipe-left) — só pra CardEntries (compras).
+    // Deletar cartão (CreditCardAccount) é flow do ManageCardsScreen.
+    // ------------------------------------------------------------------------
+
+    fun requestDelete(item: CardEntryResponse) {
+        _state.update { current ->
+            if (current is CardsUiState.Content) {
+                current.copy(pendingDelete = item)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelDelete() {
+        _state.update { current ->
+            if (current is CardsUiState.Content) {
+                current.copy(pendingDelete = null)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun confirmDelete() {
+        val current = _state.value
+        if (current !is CardsUiState.Content) return
+        val item = current.pendingDelete ?: return
+
+        _state.update {
+            (it as? CardsUiState.Content)
+                ?.copy(pendingDelete = null, deletingId = item.id)
+                ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                cardsRepository.deleteEntry(item.id)
+                _state.update { s ->
+                    if (s is CardsUiState.Content) {
+                        s.copy(
+                            allEntries = s.allEntries.filterNot { it.id == item.id },
+                            deletingId = null,
+                        )
+                    } else {
+                        s
+                    }
+                }
+            } catch (e: HttpException) {
+                _state.value = CardsUiState.Error("Erro ao deletar (HTTP ${e.code()})")
+            } catch (e: IOException) {
+                _state.value = CardsUiState.Error("Sem conexão. Tenta de novo.")
+            } catch (e: Exception) {
+                _state.value = CardsUiState.Error(e.message ?: "Algo deu errado.")
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Edit flow (swipe-right) — toggles do flag; PATCH é feito pela sheet.
+    // ------------------------------------------------------------------------
+
+    fun requestEdit(item: CardEntryResponse) {
+        _state.update { current ->
+            if (current is CardsUiState.Content) {
+                current.copy(editing = item)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelEdit() {
+        _state.update { current ->
+            if (current is CardsUiState.Content) {
+                current.copy(editing = null)
             } else {
                 current
             }
