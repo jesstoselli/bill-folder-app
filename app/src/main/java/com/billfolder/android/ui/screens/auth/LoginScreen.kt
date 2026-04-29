@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import com.billfolder.android.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,12 +103,12 @@ private fun LoginContent(
         ) {
             Image(
                 painter = painterResource(id = R.drawable.logo_billfolder),
-                contentDescription = "BillFolder",
+                contentDescription = stringResource(R.string.app_logo_content_description),
                 modifier = Modifier.width(220.dp),
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Bem-vindo de volta",
+                text = stringResource(R.string.auth_welcome_back),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -117,7 +118,7 @@ private fun LoginContent(
             BillFolderTextField(
                 value = email,
                 onValueChange = onEmailChange,
-                label = "E-mail",
+                label = stringResource(R.string.auth_email),
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next,
                 enabled = !isSubmitting,
@@ -128,7 +129,7 @@ private fun LoginContent(
             BillFolderTextField(
                 value = password,
                 onValueChange = onPasswordChange,
-                label = "Senha",
+                label = stringResource(R.string.auth_password),
                 isPassword = true,
                 imeAction = ImeAction.Done,
                 enabled = !isSubmitting,
@@ -148,7 +149,7 @@ private fun LoginContent(
             Spacer(Modifier.height(28.dp))
 
             BillFolderPrimaryButton(
-                text = "Entrar",
+                text = stringResource(R.string.auth_login_cta),
                 onClick = onSubmit,
                 loading = isSubmitting,
             )
@@ -165,12 +166,14 @@ private fun LoginContent(
 
 @Composable
 private fun SignupLink(onClick: () -> Unit, enabled: Boolean) {
+    val prefix = stringResource(R.string.auth_no_account_prefix)
+    val link   = stringResource(R.string.auth_no_account_link)
     val annotated: AnnotatedString = buildAnnotatedString {
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-            append("Não tem conta? ")
+            append(prefix)
         }
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-            append("Cadastre-se")
+            append(link)
         }
     }
 

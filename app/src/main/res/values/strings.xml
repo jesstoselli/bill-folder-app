@@ -1,3 +1,66 @@
 <resources>
+    <!--
+      Convenções:
+      - Headers de seção em lowercase ("saldo disponível", "próximos") seguindo o DS v0.2.
+      - Mensagens completas mantêm capitalização normal de frase.
+      - Prefixos por feature pra facilitar agrupar: app_, auth_, home_, status_, common_.
+    -->
+
+    <!-- App -->
     <string name="app_name">BillFolder</string>
+    <string name="app_logo_content_description">BillFolder</string>
+
+    <!-- Common -->
+    <string name="common_retry">tentar de novo</string>
+    <string name="common_add">adicionar</string>
+    <string name="common_loading">carregando…</string>
+
+    <!-- Top bar -->
+    <string name="topbar_menu">menu</string>
+    <string name="topbar_profile">perfil</string>
+
+    <!-- Auth -->
+    <string name="auth_welcome_back">Bem-vindo de volta</string>
+    <string name="auth_create_account_title">Crie sua conta</string>
+    <string name="auth_email">E-mail</string>
+    <string name="auth_password">Senha</string>
+    <string name="auth_password_hint">Senha (mínimo 8 caracteres)</string>
+    <string name="auth_name">Nome</string>
+    <string name="auth_login_cta">Entrar</string>
+    <string name="auth_signup_cta">Criar conta</string>
+    <string name="auth_no_account_prefix">Não tem conta? </string>
+    <string name="auth_no_account_link">Cadastre-se</string>
+    <string name="auth_have_account_prefix">Já tem conta? </string>
+    <string name="auth_have_account_link">Entrar</string>
+
+    <!-- Home -->
+    <string name="home_section_next_due">próximos</string>
+    <string name="home_section_overdue">atrasados</string>
+    <string name="home_overdue_warning_content_description">despesas atrasadas</string>
+
+    <!-- Hero card -->
+    <string name="home_hero_available_amount">saldo disponível</string>
+    <!-- Argumento %1$s recebe o BRL formatado, ex: "R$ 1.047,40" -->
+    <string name="home_hero_realized_format">realizado: %1$s</string>
+
+    <!-- Cycle navigator -->
+    <string name="cycle_previous_content_description">ciclo anterior</string>
+    <string name="cycle_next_content_description">próximo ciclo</string>
+
+    <!-- List row -->
+    <string name="home_list_card_statement_subtitle">fatura</string>
+    <!-- "Aluguel · 30 de abr." — primeiro arg subtítulo, segundo data -->
+    <string name="home_list_subtitle_format">%1$s · %2$s</string>
+
+    <!-- Empty / error states -->
+    <string name="home_no_cycle_title">você ainda não tem um ciclo aberto.</string>
+    <string name="home_no_cycle_subtitle">a criação de ciclos chega na próxima etapa do app.</string>
+
+    <!-- Status chips -->
+    <string name="status_paid">pago</string>
+    <string name="status_open">aberta</string>
+    <string name="status_closed">fechada</string>
+    <string name="status_overdue">atrasada</string>
+    <string name="status_pending">pendente</string>
+    <string name="status_waiting">aguardando</string>
 </resources>

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
@@ -106,12 +107,12 @@ private fun SignupContent(
         ) {
             Image(
                 painter = painterResource(id = R.drawable.logo_billfolder),
-                contentDescription = "BillFolder",
+                contentDescription = stringResource(R.string.app_logo_content_description),
                 modifier = Modifier.width(220.dp),
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Crie sua conta",
+                text = stringResource(R.string.auth_create_account_title),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -121,7 +122,7 @@ private fun SignupContent(
             BillFolderTextField(
                 value = displayName,
                 onValueChange = onNameChange,
-                label = "Nome",
+                label = stringResource(R.string.auth_name),
                 imeAction = ImeAction.Next,
                 enabled = !isSubmitting,
             )
@@ -131,7 +132,7 @@ private fun SignupContent(
             BillFolderTextField(
                 value = email,
                 onValueChange = onEmailChange,
-                label = "E-mail",
+                label = stringResource(R.string.auth_email),
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next,
                 enabled = !isSubmitting,
@@ -142,7 +143,7 @@ private fun SignupContent(
             BillFolderTextField(
                 value = password,
                 onValueChange = onPasswordChange,
-                label = "Senha (mínimo 8 caracteres)",
+                label = stringResource(R.string.auth_password_hint),
                 isPassword = true,
                 imeAction = ImeAction.Done,
                 enabled = !isSubmitting,
@@ -162,7 +163,7 @@ private fun SignupContent(
             Spacer(Modifier.height(28.dp))
 
             BillFolderPrimaryButton(
-                text = "Criar conta",
+                text = stringResource(R.string.auth_signup_cta),
                 onClick = onSubmit,
                 loading = isSubmitting,
             )
@@ -179,12 +180,14 @@ private fun SignupContent(
 
 @Composable
 private fun LoginLink(onClick: () -> Unit, enabled: Boolean) {
+    val prefix = stringResource(R.string.auth_have_account_prefix)
+    val link   = stringResource(R.string.auth_have_account_link)
     val annotated: AnnotatedString = buildAnnotatedString {
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-            append("Já tem conta? ")
+            append(prefix)
         }
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-            append("Entrar")
+            append(link)
         }
     }
 
