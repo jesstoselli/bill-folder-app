@@ -14,6 +14,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
+import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.ui.components.BillFolderDateField
 import com.billfolder.android.ui.components.BillFolderDropdown
 import com.billfolder.android.ui.components.BillFolderMoneyField
@@ -22,13 +23,28 @@ import com.billfolder.android.ui.components.BillFolderTextField
 import com.billfolder.android.ui.components.BillFolderTransactionSheet
 import com.billfolder.android.ui.components.DropdownOption
 
+/**
+ * Sheet de "nova / editar despesa". Quando `existing` é não-null, sheet
+ * entra em modo edit: prefill via VM, título "editar...", CTA "atualizar",
+ * submit faz PATCH em vez de POST.
+ *
+ * Não mexe em status/paid* — esse fluxo continua sendo do PayExpenseSheet
+ * (acessado via tap em row pending/overdue, fora do swipe-right).
+ */
 @Composable
 fun AddExpenseSheet(
     onDismiss: () -> Unit,
     onSaved: () -> Unit,
+    existing: ExpenseResponse? = null,
     viewModel: AddExpenseViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(existing) {
+        if (existing != null) {
+            viewModel.prefill(existing)
+        }
+    }
 
     val labelEmpty = stringResource(R.string.add_daily_validation_label_empty)
     val amountInvalid = stringResource(R.string.add_daily_validation_amount_invalid)
@@ -41,14 +57,26 @@ fun AddExpenseSheet(
         }
     }
 
+    val isEditing = state.editingId != null
+    val title = if (isEditing) {
+        stringResource(R.string.add_expense_title_edit)
+    } else {
+        stringResource(R.string.add_expense_title)
+    }
+    val ctaText = if (isEditing) {
+        stringResource(R.string.sheet_update_cta)
+    } else {
+        stringResource(R.string.sheet_save_cta)
+    }
+
     BillFolderTransactionSheet(
-        title = stringResource(R.string.add_expense_title),
+        title = title,
         onDismiss = onDismiss,
         isSaving = state.isSaving,
         errorMessage = state.errorMessage,
         footer = {
             BillFolderPrimaryButton(
-                text = stringResource(R.string.sheet_save_cta),
+                text = ctaText,
                 onClick = {
                     viewModel.submit(
                         labelEmptyMessage = labelEmpty,

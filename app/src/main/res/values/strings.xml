@@ -216,13 +216,18 @@
     <string name="expenses_no_cycle_title">você não tem um ciclo aberto.</string>
     <string name="expenses_no_cycle_subtitle">a criação de ciclos chega na próxima etapa do app.</string>
 
-    <!-- Add Expense (sheet) -->
+    <!-- Add / Edit Expense (sheet) -->
     <string name="add_expense_title">nova despesa</string>
+    <string name="add_expense_title_edit">editar despesa</string>
     <string name="add_expense_field_due_date">vencimento</string>
     <string name="add_expense_field_label">descrição</string>
     <string name="add_expense_field_amount">valor esperado</string>
     <string name="add_expense_field_category">categoria</string>
     <string name="add_expense_field_notes">notas (opcional)</string>
+
+    <!-- Delete Expense (dialog) -->
+    <string name="expense_delete_dialog_title">deletar despesa?</string>
+    <string name="expense_delete_dialog_message">isso vai apagar \"%1$s\" permanentemente. essa ação não pode ser desfeita.</string>
 
     <!-- Pay Expense (sheet) -->
     <string name="pay_expense_title">marcar como paga</string>

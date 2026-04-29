@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -28,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -46,6 +49,7 @@ import com.billfolder.android.R
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTotalCard
+import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.expenses.components.ExpenseRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
@@ -119,12 +123,11 @@ fun ExpensesScreen(
                     onRetry = viewModel::refresh,
                 )
                 is ExpensesUiState.Content -> ExpensesContent(
-                    expenses = s.expenses,
-                    cycleStart = s.cycle.startDate,
-                    cycleEnd = s.cycle.endDate,
-                    cycleLabel = s.cycle.label,
+                    state = s,
                     onAddExpense = { showAddSheet = true },
                     onPayExpense = { expense -> payingExpense = expense },
+                    onRequestDelete = viewModel::requestDelete,
+                    onRequestEdit = viewModel::requestEdit,
                 )
             }
         }
@@ -143,18 +146,42 @@ fun ExpensesScreen(
                 onSaved = { viewModel.refresh() },
             )
         }
+
+        // Sheet de editar (modo edit) — visível enquanto editing != null no VM.
+        // Reusa AddExpenseSheet com `existing` preenchido. PATCH sem mexer
+        // em status/paid* (esse é caminho do PayExpenseSheet acima).
+        val current = state
+        if (current is ExpensesUiState.Content && current.editing != null) {
+            AddExpenseSheet(
+                existing = current.editing,
+                onDismiss = viewModel::cancelEdit,
+                onSaved = {
+                    viewModel.cancelEdit()
+                    viewModel.refresh()
+                },
+            )
+        }
+
+        // Dialog de confirmação de delete — atrelado ao pendingDelete do VM.
+        if (current is ExpensesUiState.Content && current.pendingDelete != null) {
+            DeleteExpenseDialog(
+                expenseLabel = current.pendingDelete.label,
+                onConfirm = viewModel::confirmDelete,
+                onCancel = viewModel::cancelDelete,
+            )
+        }
     }
 }
 
 @Composable
 private fun ExpensesContent(
-    expenses: List<ExpenseResponse>,
-    cycleStart: String,
-    cycleEnd: String,
-    cycleLabel: String,
+    state: ExpensesUiState.Content,
     onAddExpense: () -> Unit,
     onPayExpense: (ExpenseResponse) -> Unit,
+    onRequestDelete: (ExpenseResponse) -> Unit,
+    onRequestEdit: (ExpenseResponse) -> Unit,
 ) {
+    val expenses = state.expenses
     val total = expenses.sumOf { it.actualAmount ?: it.expectedAmount }
     val overdue = expenses.filter { it.status.equals("overdue", ignoreCase = true) }
     val upcoming = expenses.filter { it.status.equals("pending", ignoreCase = true) }
@@ -167,9 +194,9 @@ private fun ExpensesContent(
     ) {
         item {
             CycleNavigator(
-                cycleLabel = cycleLabel,
-                startIso = cycleStart,
-                endIso = cycleEnd,
+                cycleLabel = state.cycle.label,
+                startIso = state.cycle.startDate,
+                endIso = state.cycle.endDate,
                 onPrevious = { /* TODO navegação de ciclo */ },
                 onNext = { /* TODO */ },
             )
@@ -194,7 +221,14 @@ private fun ExpensesContent(
                 )
             }
             items(overdue, key = { it.id }) { exp ->
-                ExpenseRow(expense = exp, onClick = { onPayExpense(exp) })
+                SwipeToActionRow(
+                    isPending = state.pendingDelete?.id == exp.id ||
+                        state.editing?.id == exp.id,
+                    onDelete = { onRequestDelete(exp) },
+                    onEdit = { onRequestEdit(exp) },
+                ) {
+                    ExpenseRow(expense = exp, onClick = { onPayExpense(exp) })
+                }
             }
         }
 
@@ -203,20 +237,75 @@ private fun ExpensesContent(
                 SectionHeader(text = stringResource(R.string.expenses_section_upcoming))
             }
             items(upcoming, key = { it.id }) { exp ->
-                ExpenseRow(expense = exp, onClick = { onPayExpense(exp) })
+                SwipeToActionRow(
+                    isPending = state.pendingDelete?.id == exp.id ||
+                        state.editing?.id == exp.id,
+                    onDelete = { onRequestDelete(exp) },
+                    onEdit = { onRequestEdit(exp) },
+                ) {
+                    ExpenseRow(expense = exp, onClick = { onPayExpense(exp) })
+                }
             }
         }
 
         if (paid.isNotEmpty()) {
             item { SectionHeader(text = stringResource(R.string.expenses_section_paid)) }
-            // Paid sem onClick — já tá pago, tap não faz nada
+            // Paid sem onClick (tap não tem efeito — já tá pago) mas swipe
+            // funciona normal: user pode querer deletar o registro ou
+            // corrigir um campo errado.
             items(paid, key = { it.id }) { exp ->
-                ExpenseRow(expense = exp, onClick = null)
+                SwipeToActionRow(
+                    isPending = state.pendingDelete?.id == exp.id ||
+                        state.editing?.id == exp.id,
+                    onDelete = { onRequestDelete(exp) },
+                    onEdit = { onRequestEdit(exp) },
+                ) {
+                    ExpenseRow(expense = exp, onClick = null)
+                }
             }
         }
 
         item { Spacer(Modifier.height(80.dp)) }
     }
+}
+
+/**
+ * Dialog de confirmação de delete. Mesmo padrão do DeleteCardDialog /
+ * DeleteDailyExpenseDialog: confirm em vermelho, dismiss neutro.
+ */
+@Composable
+private fun DeleteExpenseDialog(
+    expenseLabel: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(text = stringResource(R.string.expense_delete_dialog_title))
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.expense_delete_dialog_message, expenseLabel),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(stringResource(R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
 }
 
 @Composable
