@@ -15,6 +15,9 @@
     <string name="common_add">adicionar</string>
     <string name="common_close">fechar</string>
     <string name="common_loading">carregando…</string>
+    <string name="common_delete">deletar</string>
+    <string name="common_cancel">cancelar</string>
+    <string name="common_new">novo</string>
 
     <!-- Speed Dial — atalhos de "adicionar" -->
     <string name="speed_dial_daily">avulsa</string>
@@ -112,6 +115,55 @@
     <string name="add_daily_validation_amount_invalid">Valor precisa ser maior que zero.</string>
     <string name="add_daily_validation_category_empty">Escolha uma categoria.</string>
     <string name="add_daily_validation_account_empty">Escolha uma conta.</string>
+
+    <!-- Cards — consumo (despesas no cartão, do drawer principal) -->
+    <string name="cards_screen_title">despesas no cartão</string>
+    <string name="cards_empty_title">você ainda não tem cartões cadastrados.</string>
+    <string name="cards_empty_subtitle">cadastre um cartão em "gerenciar > cartões" pra começar.</string>
+    <string name="cards_no_entries_title">nenhuma compra nesse cartão ainda.</string>
+    <string name="cards_no_entries_subtitle">toque no botão pra registrar a primeira compra.</string>
+    <!-- ex: "fechamento dia 28 · vence dia 5" -->
+    <string name="cards_card_dates_format">fechamento dia %1$d · vence dia %2$d</string>
+    <string name="cards_total_label">total nesse cartão no ciclo</string>
+    <!-- ex: "Tênis Nike · 23 de mar." (label + data da compra)
+         ou "Tênis Nike (2/6) · 23 de mar." quando parcelada -->
+    <string name="cards_entry_subtitle_format">%1$s · %2$s</string>
+    <string name="cards_entry_installments_format">%1$s (%2$dx)</string>
+
+    <!-- Manage Cards (gerenciar > cartões) -->
+    <string name="manage_cards_screen_title">cartões</string>
+    <string name="manage_cards_empty_title">você ainda não tem cartões cadastrados.</string>
+    <string name="manage_cards_empty_subtitle">cadastre um cartão pra registrar compras parceladas.</string>
+    <string name="manage_cards_delete_dialog_title">deletar cartão?</string>
+    <!-- %1$s = nome do cartão -->
+    <string name="manage_cards_delete_dialog_message">isso vai apagar "%1$s" permanentemente, junto com as compras associadas. essa ação não pode ser desfeita.</string>
+    <string name="manage_cards_swipe_hint_content_description">arraste pra deletar</string>
+    <string name="cards_chip_add_new_label">novo</string>
+
+    <!-- Add Credit Card (sheet) — cadastrar cartão -->
+    <string name="add_card_title">novo cartão</string>
+    <string name="add_card_field_name">nome (ex: Itaú Personnalité)</string>
+    <string name="add_card_field_issuer_bank">banco emissor (opcional)</string>
+    <string name="add_card_field_brand">bandeira (opcional)</string>
+    <string name="add_card_field_closing_day">dia do fechamento</string>
+    <string name="add_card_field_due_day">dia do vencimento</string>
+    <string name="add_card_validation_name">Informe o nome do cartão.</string>
+    <string name="add_card_validation_closing_day">Dia de fechamento entre 1 e 31.</string>
+    <string name="add_card_validation_due_day">Dia de vencimento entre 1 e 31.</string>
+
+    <!-- Add Card Entry (sheet) — compra no cartão -->
+    <string name="add_card_entry_title">nova compra no cartão</string>
+    <string name="add_card_entry_field_card">cartão</string>
+    <string name="add_card_entry_field_purchase_date">data da compra</string>
+    <string name="add_card_entry_field_label">descrição</string>
+    <string name="add_card_entry_field_total_amount">valor total</string>
+    <string name="add_card_entry_field_installments">parcelas</string>
+    <string name="add_card_entry_field_category">categoria</string>
+    <string name="add_card_entry_field_notes">notas (opcional)</string>
+    <string name="add_card_entry_validation_card">Escolha um cartão.</string>
+    <string name="add_card_entry_validation_installments">Parcelas precisa ser pelo menos 1.</string>
+    <!-- preview do parcelamento, ex: "6x R$ 116,65" -->
+    <string name="add_card_entry_installments_preview_format">%1$dx %2$s</string>
 
     <!-- Incomes (recebimentos) -->
     <string name="income_screen_title">recebimentos</string>

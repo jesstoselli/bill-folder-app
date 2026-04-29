@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -25,7 +26,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -59,7 +59,7 @@ import com.billfolder.android.ui.theme.PillShape
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyExpensesScreen(
-    onBack: () -> Unit,
+    onMenuClick: () -> Unit,
     viewModel: DailyExpensesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -77,10 +77,10 @@ fun DailyExpensesScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onMenuClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null,
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = stringResource(R.string.topbar_menu),
                             tint = MaterialTheme.colorScheme.onBackground,
                         )
                     }

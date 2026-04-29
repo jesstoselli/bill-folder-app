@@ -21,20 +21,16 @@ import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,11 +42,10 @@ import com.billfolder.android.R
 import com.billfolder.android.data.dto.HomeCardStatementDto
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.HomeUpcomingExpenseDto
-import com.billfolder.android.ui.components.BillFolderDrawer
 import com.billfolder.android.ui.components.BillFolderSpeedDialFab
 import com.billfolder.android.ui.components.BillFolderTopBar
-import com.billfolder.android.ui.components.DrawerDestination
 import com.billfolder.android.ui.components.SpeedDialItem
+import com.billfolder.android.ui.screens.cards.AddCardEntrySheet
 import com.billfolder.android.ui.screens.dailyexpenses.AddDailyExpenseSheet
 import com.billfolder.android.ui.screens.expenses.AddExpenseSheet
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
@@ -59,7 +54,6 @@ import com.billfolder.android.ui.screens.home.components.HomeHeroCard
 import com.billfolder.android.ui.screens.home.components.HomeListRow
 import com.billfolder.android.ui.screens.home.components.WhereMoneyGoingCard
 import com.billfolder.android.ui.theme.PillShape
-import kotlinx.coroutines.launch
 
 /**
  * Home V2 — fiel ao wireframe do BillFolder-InventarioTelas v0.1 §5.
@@ -75,12 +69,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     onLogout: () -> Unit,
-    onNavigateFromDrawer: (DrawerDestination) -> Unit,
+    onMenuClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
 
     // Sheets disparados pelo Speed Dial. Quando virarem 5 (income, card,
     // savings também), refatora pra sealed class "qual sheet abrir"
@@ -88,33 +80,18 @@ fun HomeScreen(
     var showAddDailySheet by remember { mutableStateOf(false) }
     var showAddExpenseSheet by remember { mutableStateOf(false) }
     var showAddIncomeSheet by remember { mutableStateOf(false) }
+    var showAddCardSheet by remember { mutableStateOf(false) }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            BillFolderDrawer(
-                selected = DrawerDestination.Home,
-                onNavigate = { destination ->
-                    scope.launch { drawerState.close() }
-                    if (destination != DrawerDestination.Home) {
-                        // Home → no-op (já estamos aqui).
-                        // Outras telas: o NavHost decide a rota.
-                        onNavigateFromDrawer(destination)
-                    }
-                },
-            )
-        },
-    ) {
-        HomeScaffold(
-            state = state,
-            onMenuClick = { scope.launch { drawerState.open() } },
-            onAvatarClick = { viewModel.logout(onDone = onLogout) },
-            onRefresh = viewModel::refresh,
-            onSpeedDialDaily = { showAddDailySheet = true },
-            onSpeedDialExpense = { showAddExpenseSheet = true },
-            onSpeedDialIncome = { showAddIncomeSheet = true },
-        )
-    }
+    HomeScaffold(
+        state = state,
+        onMenuClick = onMenuClick,
+        onAvatarClick = { viewModel.logout(onDone = onLogout) },
+        onRefresh = viewModel::refresh,
+        onSpeedDialDaily = { showAddDailySheet = true },
+        onSpeedDialExpense = { showAddExpenseSheet = true },
+        onSpeedDialIncome = { showAddIncomeSheet = true },
+        onSpeedDialCard = { showAddCardSheet = true },
+    )
 
     // Sheets renderizados fora do drawer pra ficar em cima de tudo.
     if (showAddDailySheet) {
@@ -135,6 +112,12 @@ fun HomeScreen(
             onSaved = { viewModel.refresh() },
         )
     }
+    if (showAddCardSheet) {
+        AddCardEntrySheet(
+            onDismiss = { showAddCardSheet = false },
+            onSaved = { viewModel.refresh() },
+        )
+    }
 }
 
 @Composable
@@ -146,6 +129,7 @@ private fun HomeScaffold(
     onSpeedDialDaily: () -> Unit,
     onSpeedDialExpense: () -> Unit,
     onSpeedDialIncome: () -> Unit,
+    onSpeedDialCard: () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -184,6 +168,7 @@ private fun HomeScaffold(
                     onDaily = onSpeedDialDaily,
                     onExpense = onSpeedDialExpense,
                     onIncome = onSpeedDialIncome,
+                    onCard = onSpeedDialCard,
                 ),
             )
         }
@@ -195,6 +180,7 @@ private fun rememberSpeedDialItems(
     onDaily: () -> Unit,
     onExpense: () -> Unit,
     onIncome: () -> Unit,
+    onCard: () -> Unit,
 ): List<SpeedDialItem> {
     val daily   = stringResource(R.string.speed_dial_daily)
     val income  = stringResource(R.string.speed_dial_income)
@@ -220,7 +206,7 @@ private fun rememberSpeedDialItems(
         SpeedDialItem(
             label = card,
             icon = Icons.Default.CreditCard,
-            onClick = { /* TODO sheet de card entry */ },
+            onClick = onCard,
         ),
         SpeedDialItem(
             label = expense,

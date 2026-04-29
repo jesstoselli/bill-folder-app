@@ -1,14 +1,18 @@
 package com.billfolder.android.data.api
 
 import com.billfolder.android.data.dto.AuthResponse
+import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CheckingAccountResponse
+import com.billfolder.android.data.dto.CreateCardEntryRequest
+import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreateDailyExpenseRequest
 import com.billfolder.android.data.dto.CreateExpenseRequest
-import com.billfolder.android.data.dto.CycleResponse
-import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.CreateIncomeEntryRequest
 import com.billfolder.android.data.dto.CreateIncomeSourceRequest
+import com.billfolder.android.data.dto.CreditCardAccountResponse
+import com.billfolder.android.data.dto.CycleResponse
+import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.IncomeEntryResponse
@@ -21,6 +25,7 @@ import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -154,4 +159,33 @@ interface BillFolderApi {
         @Path("id") id: String,
         @Body request: UpdateIncomeEntryRequest,
     ): IncomeEntryResponse
+
+    // ------------------------------------------------------------------------
+    // Credit Cards (config dos cartões)
+    // ------------------------------------------------------------------------
+
+    @GET("credit-card-accounts")
+    suspend fun getCreditCards(): List<CreditCardAccountResponse>
+
+    @POST("credit-card-accounts")
+    suspend fun createCreditCard(
+        @Body request: CreateCreditCardAccountRequest,
+    ): CreditCardAccountResponse
+
+    @DELETE("credit-card-accounts/{id}")
+    suspend fun deleteCreditCard(@Path("id") id: String): retrofit2.Response<Unit>
+
+    // ------------------------------------------------------------------------
+    // Card entries (compras com parcelamento opcional)
+    // ------------------------------------------------------------------------
+
+    @GET("card-entries")
+    suspend fun getCardEntries(
+        @Query("cardId") cardId: String? = null,
+    ): List<CardEntryResponse>
+
+    @POST("card-entries")
+    suspend fun createCardEntry(
+        @Body request: CreateCardEntryRequest,
+    ): CardEntryResponse
 }

@@ -1,4 +1,4 @@
-package com.billfolder.android.ui.screens.income
+package com.billfolder.android.ui.screens.managecards
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -40,33 +42,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
-import com.billfolder.android.data.dto.IncomeEntryResponse
-import com.billfolder.android.data.dto.IncomeSourceResponse
+import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
-import com.billfolder.android.ui.components.BillFolderTotalCard
-import com.billfolder.android.ui.screens.home.components.CycleNavigator
-import com.billfolder.android.ui.screens.income.components.IncomeEntryRow
-import com.billfolder.android.ui.screens.income.components.IncomeSourceRow
+import com.billfolder.android.ui.screens.cards.AddCreditCardSheet
+import com.billfolder.android.ui.screens.cards.components.SwipeableCreditCardRow
 import com.billfolder.android.ui.theme.PillShape
-import com.billfolder.android.ui.util.formatBrl
 
-/**
- * Tela "recebimentos". Estrutura:
- *  - Hero card com total esperado + subtítulo "recebido X / Y"
- *  - Seção "no ciclo" — entries (status expected/late/received/notOccurred)
- *    com tap pra abrir Confirm Received pras pendentes
- *  - Seção "fontes recorrentes" — config (não transações)
- *  - FAB → AddIncomeEntrySheet
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IncomeScreen(
+fun ManageCardsScreen(
     onMenuClick: () -> Unit,
-    viewModel: IncomeViewModel = hiltViewModel(),
+    onNavigateToCardEntries: (cardId: String) -> Unit,
+    viewModel: ManageCardsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
-    var confirmingEntry by remember { mutableStateOf<IncomeEntryResponse?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -74,7 +64,7 @@ fun IncomeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.income_screen_title),
+                        text = stringResource(R.string.manage_cards_screen_title),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
@@ -114,130 +104,103 @@ fun IncomeScreen(
                 .padding(innerPadding),
         ) {
             when (val s = state) {
-                IncomeUiState.Loading -> CenteredLoading()
-                IncomeUiState.NoCycle -> NoCycleEmptyState()
-                is IncomeUiState.Error -> ErrorState(
+                ManageCardsUiState.Loading -> CenteredLoading()
+                is ManageCardsUiState.Error -> ErrorState(
                     message = s.message,
                     onRetry = viewModel::refresh,
                 )
-                is IncomeUiState.Content -> IncomeContent(
-                    entries = s.entries,
-                    sources = s.sources,
-                    cycleStart = s.cycle.startDate,
-                    cycleEnd = s.cycle.endDate,
-                    cycleLabel = s.cycle.label,
-                    onAddEntry = { showAddSheet = true },
-                    onConfirmReceive = { entry -> confirmingEntry = entry },
+                is ManageCardsUiState.Content -> Content(
+                    state = s,
+                    onAddCard = { showAddSheet = true },
+                    onRequestDelete = viewModel::requestDelete,
+                    onCardClick = onNavigateToCardEntries,
                 )
             }
         }
 
         if (showAddSheet) {
-            AddIncomeEntrySheet(
+            AddCreditCardSheet(
                 onDismiss = { showAddSheet = false },
                 onSaved = { viewModel.refresh() },
             )
         }
 
-        confirmingEntry?.let { entry ->
-            ConfirmIncomeSheet(
-                entry = entry,
-                onDismiss = { confirmingEntry = null },
-                onSaved = { viewModel.refresh() },
+        // Dialog de confirmação de delete — atrelado ao pendingDelete do VM.
+        val current = state
+        if (current is ManageCardsUiState.Content && current.pendingDelete != null) {
+            DeleteCardDialog(
+                cardName = current.pendingDelete.name,
+                onConfirm = viewModel::confirmDelete,
+                onCancel = viewModel::cancelDelete,
             )
         }
     }
 }
 
 @Composable
-private fun IncomeContent(
-    entries: List<IncomeEntryResponse>,
-    sources: List<IncomeSourceResponse>,
-    cycleStart: String,
-    cycleEnd: String,
-    cycleLabel: String,
-    onAddEntry: () -> Unit,
-    onConfirmReceive: (IncomeEntryResponse) -> Unit,
+private fun Content(
+    state: ManageCardsUiState.Content,
+    onAddCard: () -> Unit,
+    onRequestDelete: (CreditCardAccountResponse) -> Unit,
+    onCardClick: (cardId: String) -> Unit,
 ) {
-    // Total esperado: soma todos os entries do ciclo (exceto notOccurred)
-    val expectedTotal = entries
-        .filter { !it.status.equals("notOccurred", ignoreCase = true) }
-        .sumOf { it.expectedAmount }
-
-    // Recebido: só os que efetivamente foram received
-    val receivedTotal = entries
-        .filter { it.status.equals("received", ignoreCase = true) }
-        .sumOf { it.actualAmount ?: it.expectedAmount }
+    if (state.cards.isEmpty()) {
+        EmptyListState(onAddCard = onAddCard)
+        return
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            CycleNavigator(
-                cycleLabel = cycleLabel,
-                startIso = cycleStart,
-                endIso = cycleEnd,
-                onPrevious = { /* TODO */ },
-                onNext = { /* TODO */ },
+        items(state.cards, key = { it.id }) { card ->
+            SwipeableCreditCardRow(
+                card = card,
+                pendingDelete = state.pendingDelete,
+                onSwipeToDelete = onRequestDelete,
+                // Tap na row → "despesas no cartão" daquele cartão.
+                onClick = { onCardClick(card.id) },
             )
         }
-
-        item {
-            BillFolderTotalCard(
-                total = expectedTotal,
-                label = stringResource(R.string.income_total_label),
-                subtitle = stringResource(
-                    R.string.income_total_subtitle_format,
-                    formatBrl(receivedTotal),
-                    formatBrl(expectedTotal),
-                ),
-            )
-        }
-
-        if (entries.isEmpty() && sources.isEmpty()) {
-            item { EmptyListState(onAddEntry = onAddEntry) }
-        }
-
-        if (entries.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.income_section_this_month)) }
-            items(entries, key = { it.id }) { entry ->
-                val canConfirm = entry.status.equals("expected", ignoreCase = true) ||
-                    entry.status.equals("late", ignoreCase = true)
-                IncomeEntryRow(
-                    entry = entry,
-                    onClick = if (canConfirm) {
-                        { onConfirmReceive(entry) }
-                    } else {
-                        null
-                    },
-                )
-            }
-        }
-
-        if (sources.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.income_section_recurring)) }
-            items(sources, key = { it.id }) { source ->
-                IncomeSourceRow(source = source)
-            }
-        }
-
         item { Spacer(Modifier.height(80.dp)) }
     }
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+private fun DeleteCardDialog(
+    cardName: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(text = stringResource(R.string.manage_cards_delete_dialog_title))
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.manage_cards_delete_dialog_message, cardName),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(stringResource(R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     )
 }
-
-// ----- States laterais -----
 
 @Composable
 private fun CenteredLoading() {
@@ -273,48 +236,22 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun NoCycleEmptyState() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(R.string.income_no_cycle_title),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.income_no_cycle_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyListState(onAddEntry: () -> Unit) {
+private fun EmptyListState(onAddCard: () -> Unit) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(top = 60.dp, start = 24.dp, end = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.income_empty_title),
+            text = stringResource(R.string.manage_cards_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.income_empty_subtitle),
+            text = stringResource(R.string.manage_cards_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -322,7 +259,7 @@ private fun EmptyListState(onAddEntry: () -> Unit) {
         Spacer(Modifier.height(24.dp))
         BillFolderPrimaryButton(
             text = stringResource(R.string.common_add),
-            onClick = onAddEntry,
+            onClick = onAddCard,
             modifier = Modifier.fillMaxWidth(fraction = 0.7f),
         )
     }

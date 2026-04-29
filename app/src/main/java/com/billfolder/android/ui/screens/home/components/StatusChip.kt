@@ -46,14 +46,21 @@ private data class StatusRole(
 @Composable
 private fun roleFor(status: String): StatusRole {
     val cs = MaterialTheme.colorScheme
+    // Cada status tem rótulo específico — "paid" e "received" são
+    // semanticamente diferentes mesmo com cor igual: pago é despesa,
+    // recebido é receita. Idem pra "overdue" (despesa atrasada) vs
+    // "late" (recebimento que não veio).
     return when (status.lowercase()) {
-        "paid", "received"  -> StatusRole(stringResource(R.string.status_paid),    cs.primaryContainer,   cs.onPrimaryContainer)
-        "open"              -> StatusRole(stringResource(R.string.status_open),    cs.tertiaryContainer,  cs.onTertiaryContainer)
-        "closed"            -> StatusRole(stringResource(R.string.status_closed),  cs.tertiaryContainer,  cs.onTertiaryContainer)
-        "overdue", "late"   -> StatusRole(stringResource(R.string.status_overdue), cs.errorContainer,     cs.onErrorContainer)
-        "pending"           -> StatusRole(stringResource(R.string.status_pending), cs.surfaceContainerHigh, cs.onSurfaceVariant)
-        "notoccurred"       -> StatusRole(stringResource(R.string.status_waiting), cs.surfaceContainerHigh, cs.onSurfaceVariant)
-        else                -> StatusRole(
+        "paid"        -> StatusRole(stringResource(R.string.status_paid),     cs.primaryContainer,   cs.onPrimaryContainer)
+        "received"    -> StatusRole(stringResource(R.string.status_received), cs.primaryContainer,   cs.onPrimaryContainer)
+        "open"        -> StatusRole(stringResource(R.string.status_open),     cs.tertiaryContainer,  cs.onTertiaryContainer)
+        "closed"      -> StatusRole(stringResource(R.string.status_closed),   cs.tertiaryContainer,  cs.onTertiaryContainer)
+        "overdue"     -> StatusRole(stringResource(R.string.status_overdue),  cs.errorContainer,     cs.onErrorContainer)
+        "late"        -> StatusRole(stringResource(R.string.status_late),     cs.errorContainer,     cs.onErrorContainer)
+        "pending"     -> StatusRole(stringResource(R.string.status_pending),  cs.surfaceContainerHigh, cs.onSurfaceVariant)
+        "expected"    -> StatusRole(stringResource(R.string.status_expected), cs.surfaceContainerHigh, cs.onSurfaceVariant)
+        "notoccurred" -> StatusRole(stringResource(R.string.status_waiting),  cs.surfaceContainerHigh, cs.onSurfaceVariant)
+        else          -> StatusRole(
             label = status.replaceFirstChar { it.uppercase() },
             container = cs.surfaceContainerHigh,
             onContainer = cs.onSurfaceVariant,

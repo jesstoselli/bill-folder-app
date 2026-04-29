@@ -15,8 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,7 +59,7 @@ import com.billfolder.android.ui.theme.PillShape
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpensesScreen(
-    onBack: () -> Unit,
+    onMenuClick: () -> Unit,
     viewModel: ExpensesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -78,10 +78,10 @@ fun ExpensesScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onMenuClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null,
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = stringResource(R.string.topbar_menu),
                             tint = MaterialTheme.colorScheme.onBackground,
                         )
                     }

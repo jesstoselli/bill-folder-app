@@ -11,4 +11,16 @@ object Routes {
     const val DAILY_EXPENSES  = "daily-expenses"
     const val EXPENSES        = "expenses"
     const val INCOME          = "income"
+
+    /**
+     * Cards (consumo) aceita um cardId opcional como query arg pra
+     * abrir já com aquele cartão selecionado no carousel. Sem o arg
+     * ("cards"), cai no comportamento default (primeiro cartão).
+     */
+    const val CARDS_PATTERN   = "cards?cardId={cardId}"
+    const val CARDS           = "cards"
+    const val CARDS_ARG_ID    = "cardId"
+    fun cardsWithSelected(cardId: String) = "cards?cardId=$cardId"
+
+    const val MANAGE_CARDS    = "manage-cards"
 }
