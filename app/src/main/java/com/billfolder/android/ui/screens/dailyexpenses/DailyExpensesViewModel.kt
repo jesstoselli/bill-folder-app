@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
@@ -24,6 +25,12 @@ import javax.inject.Inject
  * - Content: carregamento ok; lista pode estar vazia (no app a tela mostra
  *   um empty state distinto de "sem ciclo")
  * - Error: falha de rede/servidor; UI exibe retry
+ *
+ * Estados de ação por row:
+ *  - pendingDelete: row em swipe-left aguardando confirmação no AlertDialog
+ *  - editing: row em swipe-right com a sheet de edit aberta
+ *  - deletingId: id da row sendo deletada (entre confirm e resposta do
+ *    backend) — placeholder pra futura UI de "deletando..." se quisermos
  */
 sealed interface DailyExpensesUiState {
     data object Loading : DailyExpensesUiState
@@ -31,6 +38,9 @@ sealed interface DailyExpensesUiState {
     data class Content(
         val cycle: CycleResponse,
         val expenses: List<DailyExpenseResponse>,
+        val pendingDelete: DailyExpenseResponse? = null,
+        val editing: DailyExpenseResponse? = null,
+        val deletingId: String? = null,
     ) : DailyExpensesUiState
     data class Error(val message: String) : DailyExpensesUiState
 }
@@ -52,6 +62,100 @@ class DailyExpensesViewModel @Inject constructor(
         if (_state.value is DailyExpensesUiState.Loading) return
         _state.value = DailyExpensesUiState.Loading
         load()
+    }
+
+    // ------------------------------------------------------------------------
+    // Delete flow (swipe-left): request → AlertDialog → confirm/cancel
+    // ------------------------------------------------------------------------
+
+    /** Swipe-left completou — pede confirmação antes de bater no DELETE. */
+    fun requestDelete(item: DailyExpenseResponse) {
+        _state.update { current ->
+            if (current is DailyExpensesUiState.Content) {
+                current.copy(pendingDelete = item)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelDelete() {
+        _state.update { current ->
+            if (current is DailyExpensesUiState.Content) {
+                current.copy(pendingDelete = null)
+            } else {
+                current
+            }
+        }
+    }
+
+    /**
+     * User confirmou no dialog — bate DELETE. Em sucesso, remove
+     * otimisticamente da lista local; o próximo refresh confirma com
+     * o backend mesmo assim.
+     */
+    fun confirmDelete() {
+        val current = _state.value
+        if (current !is DailyExpensesUiState.Content) return
+        val item = current.pendingDelete ?: return
+
+        _state.update {
+            (it as? DailyExpensesUiState.Content)
+                ?.copy(pendingDelete = null, deletingId = item.id)
+                ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                dailyExpensesRepository.delete(item.id)
+                _state.update { s ->
+                    if (s is DailyExpensesUiState.Content) {
+                        s.copy(
+                            expenses = s.expenses.filterNot { it.id == item.id },
+                            deletingId = null,
+                        )
+                    } else {
+                        s
+                    }
+                }
+            } catch (e: HttpException) {
+                _state.value = DailyExpensesUiState.Error("Erro ao deletar (HTTP ${e.code()})")
+            } catch (e: IOException) {
+                _state.value = DailyExpensesUiState.Error("Sem conexão. Tenta de novo.")
+            } catch (e: Exception) {
+                _state.value = DailyExpensesUiState.Error(e.message ?: "Algo deu errado.")
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Edit flow (swipe-right): request → sheet abre prefilled → save/cancel
+    // ------------------------------------------------------------------------
+
+    /**
+     * Swipe-right completou — abre AddDailyExpenseSheet em modo edit.
+     * O PATCH em si é feito pela sheet (que tem seu próprio VM); aqui
+     * só guardamos qual item está sendo editado pra propagar pro
+     * `existing` da sheet e pro `isPending` do SwipeToActionRow.
+     */
+    fun requestEdit(item: DailyExpenseResponse) {
+        _state.update { current ->
+            if (current is DailyExpensesUiState.Content) {
+                current.copy(editing = item)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun cancelEdit() {
+        _state.update { current ->
+            if (current is DailyExpensesUiState.Content) {
+                current.copy(editing = null)
+            } else {
+                current
+            }
+        }
     }
 
     private fun load() {
