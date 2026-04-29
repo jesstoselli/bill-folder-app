@@ -1,0 +1,91 @@
+# =============================================================================
+# Detekt — overrides do BillFolder.
+# Roda em cima das regras padrão (buildUponDefaultConfig=true), só desativamos
+# ou afrouxamos o que conflita com idioms de Compose / Kotlin moderno.
+# =============================================================================
+
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+complexity:
+  active: true
+
+  # Composables tendem a ser longos (DSL declarativa) — afrouxamos.
+  # Tanto LongMethod quanto LongParameterList são ignorados em @Composable:
+  # state hoisting legitimamente exige N estados + N callbacks; refatorar
+  # pra "data class de UiState" funciona mas adiciona indirection sem ganho real.
+  LongMethod:
+    active: true
+    threshold: 80
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 8
+    ignoreDefaultParameters: true
+    ignoreDataClasses: true
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 25
+    thresholdInClasses: 20
+    thresholdInInterfaces: 12
+    thresholdInObjects: 12
+    thresholdInEnums: 10
+    ignorePrivate: true
+    ignoreOverridden: true
+
+style:
+  # UI tem muitos literais (8.dp, 16.dp, 0.7f) — não vale poluir.
+  MagicNumber:
+    active: false
+  ReturnCount:
+    active: true
+    max: 4
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+    excludeCommentStatements: true
+    excludeRawStrings: true
+  WildcardImport:
+    active: true
+  # Permite "TODO:" no código — usamos pra marcar trabalho pendente.
+  ForbiddenComment:
+    active: false
+  UnusedPrivateMember:
+    active: true
+    allowedNames: '(_|ignored|expected|serialVersionUID)'
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    # Composables são PascalCase por convenção do Compose.
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    active: true
+    constantPattern: '[A-Z][_A-Z0-9]*|[A-Z][a-zA-Z0-9]*'
+
+empty-blocks:
+  active: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+    exceptionNames: ['Throwable']  # só reclama de catch (Throwable)
+
+performance:
+  active: true
+
+potential-bugs:
+  active: true
+  UnsafeCast:
+    active: true
+
+# Nota: o ruleset `formatting` (regras de estilo ktlint-like) vem do plugin
+# detekt-formatting, que NÃO está instalado aqui. Se quisermos no futuro:
+#   1) Adiciona em allprojects { dependencies { detektPlugins("...detekt-formatting:$ver") } }
+#   2) Reativa o bloco `formatting:` neste arquivo.
+# Por ora preferimos deixar o estilo solto — Compose tende a brigar com ktlint
+# em chamadas multi-linha de Modifier e composables aninhados.

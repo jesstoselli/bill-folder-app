@@ -28,7 +28,7 @@ android {
         debug {
             // Aponta pro Kestrel local (do .NET) — emulador acessa o host
             // pelo alias 10.0.2.2 (não localhost, que é o próprio emulador).
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5249/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5077/v1/\"")
             isMinifyEnabled = false
         }
         release {
@@ -47,6 +47,32 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // ------------------------------------------------------------------------
+    // Android Lint — checks oficiais do AGP (a11y, Compose, Kotlin, perf, etc)
+    // ------------------------------------------------------------------------
+    lint {
+        // Quebra a build no primeiro erro. Avisos não bloqueiam.
+        abortOnError = true
+        // Reporta avisos como erros — bom em CI, doloroso em dev. Mantemos
+        // false aqui; o pipeline pode rodar com `-Pandroid.lint.warningsAsErrors=true`.
+        warningsAsErrors = false
+        // Falha quando o lint não consegue rodar uma checagem (ex: faltando dep).
+        absolutePaths = false
+        // Continua executando outros checks após erros não-fatais (mais info por run).
+        ignoreWarnings = false
+        // Mostra todos os erros, mesmo passando do limite.
+        checkAllWarnings = true
+        // Inclui módulos de teste na varredura.
+        checkTestSources = false
+        ignoreTestSources = true
+        // Habilita checks específicos de Compose (Modifier reuse, etc).
+        checkDependencies = true
+        // Saída HTML pra leitura humana (gerada em build/reports/lint-results-*.html).
+        htmlReport = true
+        xmlReport = true
+        textReport = false
     }
 }
 

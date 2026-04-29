@@ -5,6 +5,7 @@ import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.auth.AuthInterceptor
 import com.billfolder.android.data.auth.BaseUrlProvider
 import com.billfolder.android.data.auth.TokenAuthenticator
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,7 +15,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
 import javax.inject.Singleton
