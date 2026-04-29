@@ -140,6 +140,9 @@ interface BillFolderApi {
         @Body request: UpdateExpenseRequest,
     ): ExpenseResponse
 
+    @DELETE("expenses/{id}")
+    suspend fun deleteExpense(@Path("id") id: String): Response<Unit>
+
     // ------------------------------------------------------------------------
     // Incomes — fontes recorrentes + entries individuais
     // ------------------------------------------------------------------------

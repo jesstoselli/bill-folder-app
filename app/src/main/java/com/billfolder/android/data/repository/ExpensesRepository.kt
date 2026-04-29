@@ -44,4 +44,15 @@ class ExpensesRepository @Inject constructor(
             paidFromAccountId = paidFromAccountId,
         ),
     )
+
+    /**
+     * Backend retorna 204 em sucesso; convertemos non-2xx em HttpException
+     * pra o caller propagar pra UI (mesmo padrão dos outros repos).
+     */
+    suspend fun delete(id: String) {
+        val response = api.deleteExpense(id)
+        if (!response.isSuccessful) {
+            throw retrofit2.HttpException(response)
+        }
+    }
 }
