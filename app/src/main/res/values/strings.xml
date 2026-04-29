@@ -199,6 +199,31 @@
     <!-- Subtítulo de IncomeSource: ex: "todo dia 5" -->
     <string name="income_source_recurring_format">todo dia %1$d</string>
 
+    <!-- Add / Edit Income Source (sheet) -->
+    <string name="add_income_source_title">nova fonte de renda</string>
+    <string name="add_income_source_title_edit">editar fonte de renda</string>
+    <string name="add_income_source_field_origin">nome (ex: Salário CLT)</string>
+    <string name="add_income_source_field_origin_type">tipo</string>
+    <string name="add_income_source_field_default_amount">valor padrão</string>
+    <string name="add_income_source_field_expected_day">dia esperado</string>
+    <string name="add_income_source_field_start_date">início</string>
+    <string name="add_income_source_field_end_date">fim (opcional)</string>
+    <string name="add_income_source_validation_origin">Informe o nome da fonte.</string>
+    <string name="add_income_source_validation_amount">Valor padrão precisa ser maior que zero.</string>
+    <string name="add_income_source_validation_expected_day">Dia esperado entre 1 e 31.</string>
+    <string name="add_income_source_validation_end_before_start">Fim deve ser igual ou posterior ao início.</string>
+
+    <!-- Tipos de fonte (IncomeOriginType) — labels lowercase pra UI -->
+    <string name="income_origin_type_work">trabalho</string>
+    <string name="income_origin_type_rent">aluguel</string>
+    <string name="income_origin_type_investment">investimento</string>
+    <string name="income_origin_type_freelance">freelance</string>
+    <string name="income_origin_type_gift">presente</string>
+    <string name="income_origin_type_other">outro</string>
+
+    <!-- CTA pra criar fonte na seção "fontes recorrentes" -->
+    <string name="income_section_recurring_add">adicionar fonte</string>
+
     <!-- Add / Edit Income Entry (sheet) -->
     <string name="add_income_title">novo recebimento</string>
     <string name="add_income_title_edit">editar recebimento</string>

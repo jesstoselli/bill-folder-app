@@ -70,6 +70,7 @@ fun IncomeScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    var showAddSourceSheet by remember { mutableStateOf(false) }
     var confirmingEntry by remember { mutableStateOf<IncomeEntryResponse?>(null) }
 
     Scaffold(
@@ -127,6 +128,7 @@ fun IncomeScreen(
                 is IncomeUiState.Content -> IncomeContent(
                     state = s,
                     onAddEntry = { showAddSheet = true },
+                    onAddSource = { showAddSourceSheet = true },
                     onConfirmReceive = { entry -> confirmingEntry = entry },
                     onRequestDelete = viewModel::requestDelete,
                     onRequestEdit = viewModel::requestEdit,
@@ -137,6 +139,14 @@ fun IncomeScreen(
         if (showAddSheet) {
             AddIncomeEntrySheet(
                 onDismiss = { showAddSheet = false },
+                onSaved = { viewModel.refresh() },
+            )
+        }
+
+        // Sheet de criar fonte recorrente — Onda 6, Passo 2.
+        if (showAddSourceSheet) {
+            AddIncomeSourceSheet(
+                onDismiss = { showAddSourceSheet = false },
                 onSaved = { viewModel.refresh() },
             )
         }
@@ -178,6 +188,7 @@ fun IncomeScreen(
 private fun IncomeContent(
     state: IncomeUiState.Content,
     onAddEntry: () -> Unit,
+    onAddSource: () -> Unit,
     onConfirmReceive: (IncomeEntryResponse) -> Unit,
     onRequestDelete: (IncomeEntryResponse) -> Unit,
     onRequestEdit: (IncomeEntryResponse) -> Unit,
@@ -251,11 +262,21 @@ private fun IncomeContent(
             }
         }
 
+        // Header da seção "fontes recorrentes" sempre visível (mesmo sem
+        // sources cadastradas) — assim o user descobre que dá pra criar
+        // uma fonte. Antes da Onda 6, a seção sumia se sources estava
+        // vazio; agora sempre tem o CTA "+ adicionar fonte".
+        item {
+            SectionHeader(
+                text = stringResource(R.string.income_section_recurring),
+                actionLabel = stringResource(R.string.income_section_recurring_add),
+                onAction = onAddSource,
+            )
+        }
+
         if (sources.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.income_section_recurring)) }
-            // Sources NÃO entram em swipe nessa onda — vão na Onda 6
-            // (CRUD de IncomeSource tem regras próprias: deletar fonte
-            // afeta entries futuras, edit pode mudar dia esperado, etc).
+            // Swipe nas sources entra no Passo 4 dessa onda — por enquanto
+            // só lista (mas já dá pra criar via CTA acima).
             items(sources, key = { it.id }) { source ->
                 IncomeSourceRow(source = source)
             }
@@ -303,14 +324,44 @@ private fun DeleteIncomeEntryDialog(
     )
 }
 
+/**
+ * Header de seção com action opcional alinhada à direita. Quando
+ * `actionLabel` + `onAction` são fornecidos, mostra um TextButton
+ * pequeno (ex: "+ adicionar fonte") sem competir com a tipografia do
+ * título.
+ */
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-    )
+private fun SectionHeader(
+    text: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        if (actionLabel != null && onAction != null) {
+            TextButton(
+                onClick = onAction,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+                Text(
+                    text = "+ $actionLabel",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
+    }
 }
 
 // ----- States laterais -----
