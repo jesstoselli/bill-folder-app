@@ -42,8 +42,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
+import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.screens.dailyexpenses.components.DailyExpenseRow
-import com.billfolder.android.ui.screens.dailyexpenses.components.DailyTotalHeroCard
 import com.billfolder.android.ui.screens.dailyexpenses.components.DayHeader
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
@@ -168,7 +168,7 @@ private fun DailyExpensesContent(
         }
 
         item {
-            DailyTotalHeroCard(
+            BillFolderTotalCard(
                 total = total,
                 label = stringResource(R.string.daily_total_label),
             )

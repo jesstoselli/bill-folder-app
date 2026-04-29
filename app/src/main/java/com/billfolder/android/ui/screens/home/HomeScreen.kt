@@ -54,6 +54,7 @@ import com.billfolder.android.ui.components.SpeedDialItem
 import com.billfolder.android.ui.screens.dailyexpenses.AddDailyExpenseSheet
 import com.billfolder.android.ui.screens.expenses.AddExpenseSheet
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
+import com.billfolder.android.ui.screens.income.AddIncomeEntrySheet
 import com.billfolder.android.ui.screens.home.components.HomeHeroCard
 import com.billfolder.android.ui.screens.home.components.HomeListRow
 import com.billfolder.android.ui.screens.home.components.WhereMoneyGoingCard
@@ -86,6 +87,7 @@ fun HomeScreen(
     // controlada por uma única var, evitando proliferação de booleans.
     var showAddDailySheet by remember { mutableStateOf(false) }
     var showAddExpenseSheet by remember { mutableStateOf(false) }
+    var showAddIncomeSheet by remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -110,6 +112,7 @@ fun HomeScreen(
             onRefresh = viewModel::refresh,
             onSpeedDialDaily = { showAddDailySheet = true },
             onSpeedDialExpense = { showAddExpenseSheet = true },
+            onSpeedDialIncome = { showAddIncomeSheet = true },
         )
     }
 
@@ -126,6 +129,12 @@ fun HomeScreen(
             onSaved = { viewModel.refresh() },
         )
     }
+    if (showAddIncomeSheet) {
+        AddIncomeEntrySheet(
+            onDismiss = { showAddIncomeSheet = false },
+            onSaved = { viewModel.refresh() },
+        )
+    }
 }
 
 @Composable
@@ -136,6 +145,7 @@ private fun HomeScaffold(
     onRefresh: () -> Unit,
     onSpeedDialDaily: () -> Unit,
     onSpeedDialExpense: () -> Unit,
+    onSpeedDialIncome: () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -173,6 +183,7 @@ private fun HomeScaffold(
                 items = rememberSpeedDialItems(
                     onDaily = onSpeedDialDaily,
                     onExpense = onSpeedDialExpense,
+                    onIncome = onSpeedDialIncome,
                 ),
             )
         }
@@ -183,6 +194,7 @@ private fun HomeScaffold(
 private fun rememberSpeedDialItems(
     onDaily: () -> Unit,
     onExpense: () -> Unit,
+    onIncome: () -> Unit,
 ): List<SpeedDialItem> {
     val daily   = stringResource(R.string.speed_dial_daily)
     val income  = stringResource(R.string.speed_dial_income)
@@ -203,7 +215,7 @@ private fun rememberSpeedDialItems(
         SpeedDialItem(
             label = income,
             icon = Icons.Default.AttachMoney,
-            onClick = { /* TODO sheet de income */ },
+            onClick = onIncome,
         ),
         SpeedDialItem(
             label = card,

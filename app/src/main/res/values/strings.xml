@@ -86,10 +86,13 @@
 
     <!-- Status chips -->
     <string name="status_paid">pago</string>
+    <string name="status_received">recebido</string>
     <string name="status_open">aberta</string>
     <string name="status_closed">fechada</string>
     <string name="status_overdue">atrasada</string>
+    <string name="status_late">em atraso</string>
     <string name="status_pending">pendente</string>
+    <string name="status_expected">esperado</string>
     <string name="status_waiting">aguardando</string>
 
     <!-- Generic transaction sheet -->
@@ -109,6 +112,38 @@
     <string name="add_daily_validation_amount_invalid">Valor precisa ser maior que zero.</string>
     <string name="add_daily_validation_category_empty">Escolha uma categoria.</string>
     <string name="add_daily_validation_account_empty">Escolha uma conta.</string>
+
+    <!-- Incomes (recebimentos) -->
+    <string name="income_screen_title">recebimentos</string>
+    <string name="income_total_label">recebimentos esperados no ciclo</string>
+    <!-- %1$s e %2$s: BRL formatado de "received" e "expected", ex: "recebido R$ 5.730 / 9.947" -->
+    <string name="income_total_subtitle_format">recebido %1$s de %2$s</string>
+    <string name="income_section_this_month">no ciclo</string>
+    <string name="income_section_recurring">fontes recorrentes</string>
+    <string name="income_empty_title">nenhum recebimento nesse ciclo.</string>
+    <string name="income_empty_subtitle">cadastre um recebimento avulso ou crie uma fonte recorrente.</string>
+    <string name="income_no_cycle_title">você não tem um ciclo aberto.</string>
+    <string name="income_no_cycle_subtitle">a criação de ciclos chega na próxima etapa do app.</string>
+    <!-- Subtítulo de IncomeEntry: ex: "Salário CLT · 05 mai" ou "avulso · 05 mai" -->
+    <string name="income_entry_one_off">avulso</string>
+    <!-- Subtítulo de IncomeSource: ex: "todo dia 5" -->
+    <string name="income_source_recurring_format">todo dia %1$d</string>
+
+    <!-- Add Income Entry (sheet) -->
+    <string name="add_income_title">novo recebimento</string>
+    <string name="add_income_field_expected_date">previsão</string>
+    <string name="add_income_field_amount">valor esperado</string>
+    <string name="add_income_field_source">vincular a uma fonte (opcional)</string>
+    <string name="add_income_source_none">avulso (sem fonte)</string>
+    <string name="add_income_field_notes">notas (opcional)</string>
+
+    <!-- Confirm Income Received (sheet) -->
+    <string name="confirm_income_title">confirmar recebimento</string>
+    <string name="confirm_income_field_actual_date">data do recebimento</string>
+    <string name="confirm_income_field_actual_amount">valor recebido</string>
+    <string name="confirm_income_cta">confirmar</string>
+    <!-- Cabeçalho informativo -->
+    <string name="confirm_income_summary_format">esperado %1$s · em %2$s</string>
 
     <!-- Expenses -->
     <string name="expenses_screen_title">despesas</string>

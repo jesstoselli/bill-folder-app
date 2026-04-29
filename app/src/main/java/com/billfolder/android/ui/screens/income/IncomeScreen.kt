@@ -1,23 +1,20 @@
-package com.billfolder.android.ui.screens.expenses
+package com.billfolder.android.ui.screens.income
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -43,28 +40,33 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
-import com.billfolder.android.data.dto.ExpenseResponse
+import com.billfolder.android.data.dto.IncomeEntryResponse
+import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTotalCard
-import com.billfolder.android.ui.screens.expenses.components.ExpenseRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
+import com.billfolder.android.ui.screens.income.components.IncomeEntryRow
+import com.billfolder.android.ui.screens.income.components.IncomeSourceRow
 import com.billfolder.android.ui.theme.PillShape
+import com.billfolder.android.ui.util.formatBrl
 
 /**
- * Tela de "despesas". Estrutura idêntica à de daily expenses, com 3 seções
- * separadas por status (atrasadas / próximas / pagas) em vez de
- * agrupamento por dia. Tap numa row pending ou overdue abre o
- * PayExpenseSheet pra marcar como pago.
+ * Tela "recebimentos". Estrutura:
+ *  - Hero card com total esperado + subtítulo "recebido X / Y"
+ *  - Seção "no ciclo" — entries (status expected/late/received/notOccurred)
+ *    com tap pra abrir Confirm Received pras pendentes
+ *  - Seção "fontes recorrentes" — config (não transações)
+ *  - FAB → AddIncomeEntrySheet
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpensesScreen(
+fun IncomeScreen(
     onBack: () -> Unit,
-    viewModel: ExpensesViewModel = hiltViewModel(),
+    viewModel: IncomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
-    var payingExpense by remember { mutableStateOf<ExpenseResponse?>(null) }
+    var confirmingEntry by remember { mutableStateOf<IncomeEntryResponse?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -72,7 +74,7 @@ fun ExpensesScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.expenses_screen_title),
+                        text = stringResource(R.string.income_screen_title),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
@@ -112,34 +114,35 @@ fun ExpensesScreen(
                 .padding(innerPadding),
         ) {
             when (val s = state) {
-                ExpensesUiState.Loading -> CenteredLoading()
-                ExpensesUiState.NoCycle -> NoCycleEmptyState()
-                is ExpensesUiState.Error -> ErrorState(
+                IncomeUiState.Loading -> CenteredLoading()
+                IncomeUiState.NoCycle -> NoCycleEmptyState()
+                is IncomeUiState.Error -> ErrorState(
                     message = s.message,
                     onRetry = viewModel::refresh,
                 )
-                is ExpensesUiState.Content -> ExpensesContent(
-                    expenses = s.expenses,
+                is IncomeUiState.Content -> IncomeContent(
+                    entries = s.entries,
+                    sources = s.sources,
                     cycleStart = s.cycle.startDate,
                     cycleEnd = s.cycle.endDate,
                     cycleLabel = s.cycle.label,
-                    onAddExpense = { showAddSheet = true },
-                    onPayExpense = { expense -> payingExpense = expense },
+                    onAddEntry = { showAddSheet = true },
+                    onConfirmReceive = { entry -> confirmingEntry = entry },
                 )
             }
         }
 
         if (showAddSheet) {
-            AddExpenseSheet(
+            AddIncomeEntrySheet(
                 onDismiss = { showAddSheet = false },
                 onSaved = { viewModel.refresh() },
             )
         }
 
-        payingExpense?.let { exp ->
-            PayExpenseSheet(
-                expense = exp,
-                onDismiss = { payingExpense = null },
+        confirmingEntry?.let { entry ->
+            ConfirmIncomeSheet(
+                entry = entry,
+                onDismiss = { confirmingEntry = null },
                 onSaved = { viewModel.refresh() },
             )
         }
@@ -147,18 +150,24 @@ fun ExpensesScreen(
 }
 
 @Composable
-private fun ExpensesContent(
-    expenses: List<ExpenseResponse>,
+private fun IncomeContent(
+    entries: List<IncomeEntryResponse>,
+    sources: List<IncomeSourceResponse>,
     cycleStart: String,
     cycleEnd: String,
     cycleLabel: String,
-    onAddExpense: () -> Unit,
-    onPayExpense: (ExpenseResponse) -> Unit,
+    onAddEntry: () -> Unit,
+    onConfirmReceive: (IncomeEntryResponse) -> Unit,
 ) {
-    val total = expenses.sumOf { it.actualAmount ?: it.expectedAmount }
-    val overdue = expenses.filter { it.status.equals("overdue", ignoreCase = true) }
-    val upcoming = expenses.filter { it.status.equals("pending", ignoreCase = true) }
-    val paid = expenses.filter { it.status.equals("paid", ignoreCase = true) }
+    // Total esperado: soma todos os entries do ciclo (exceto notOccurred)
+    val expectedTotal = entries
+        .filter { !it.status.equals("notOccurred", ignoreCase = true) }
+        .sumOf { it.expectedAmount }
+
+    // Recebido: só os que efetivamente foram received
+    val receivedTotal = entries
+        .filter { it.status.equals("received", ignoreCase = true) }
+        .sumOf { it.actualAmount ?: it.expectedAmount }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -170,48 +179,47 @@ private fun ExpensesContent(
                 cycleLabel = cycleLabel,
                 startIso = cycleStart,
                 endIso = cycleEnd,
-                onPrevious = { /* TODO navegação de ciclo */ },
+                onPrevious = { /* TODO */ },
                 onNext = { /* TODO */ },
             )
         }
 
         item {
             BillFolderTotalCard(
-                total = total,
-                label = stringResource(R.string.expenses_total_label),
+                total = expectedTotal,
+                label = stringResource(R.string.income_total_label),
+                subtitle = stringResource(
+                    R.string.income_total_subtitle_format,
+                    formatBrl(receivedTotal),
+                    formatBrl(expectedTotal),
+                ),
             )
         }
 
-        if (expenses.isEmpty()) {
-            item { EmptyListState(onAddExpense = onAddExpense) }
+        if (entries.isEmpty() && sources.isEmpty()) {
+            item { EmptyListState(onAddEntry = onAddEntry) }
         }
 
-        if (overdue.isNotEmpty()) {
-            item {
-                SectionHeader(
-                    text = stringResource(R.string.expenses_section_overdue),
-                    showWarningIcon = true,
+        if (entries.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.income_section_this_month)) }
+            items(entries, key = { it.id }) { entry ->
+                val canConfirm = entry.status.equals("expected", ignoreCase = true) ||
+                    entry.status.equals("late", ignoreCase = true)
+                IncomeEntryRow(
+                    entry = entry,
+                    onClick = if (canConfirm) {
+                        { onConfirmReceive(entry) }
+                    } else {
+                        null
+                    },
                 )
             }
-            items(overdue, key = { it.id }) { exp ->
-                ExpenseRow(expense = exp, onClick = { onPayExpense(exp) })
-            }
         }
 
-        if (upcoming.isNotEmpty()) {
-            item {
-                SectionHeader(text = stringResource(R.string.expenses_section_upcoming))
-            }
-            items(upcoming, key = { it.id }) { exp ->
-                ExpenseRow(expense = exp, onClick = { onPayExpense(exp) })
-            }
-        }
-
-        if (paid.isNotEmpty()) {
-            item { SectionHeader(text = stringResource(R.string.expenses_section_paid)) }
-            // Paid sem onClick — já tá pago, tap não faz nada
-            items(paid, key = { it.id }) { exp ->
-                ExpenseRow(expense = exp, onClick = null)
+        if (sources.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.income_section_recurring)) }
+            items(sources, key = { it.id }) { source ->
+                IncomeSourceRow(source = source)
             }
         }
 
@@ -220,33 +228,16 @@ private fun ExpensesContent(
 }
 
 @Composable
-private fun SectionHeader(text: String, showWarningIcon: Boolean = false) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        if (showWarningIcon) {
-            Spacer(Modifier.size(8.dp))
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+    )
 }
 
-// ----------------------------------------------------------------------------
-// States laterais
-// ----------------------------------------------------------------------------
+// ----- States laterais -----
 
 @Composable
 private fun CenteredLoading() {
@@ -291,14 +282,14 @@ private fun NoCycleEmptyState() {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(R.string.expenses_no_cycle_title),
+                text = stringResource(R.string.income_no_cycle_title),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.expenses_no_cycle_subtitle),
+                text = stringResource(R.string.income_no_cycle_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -308,7 +299,7 @@ private fun NoCycleEmptyState() {
 }
 
 @Composable
-private fun EmptyListState(onAddExpense: () -> Unit) {
+private fun EmptyListState(onAddEntry: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -316,14 +307,14 @@ private fun EmptyListState(onAddExpense: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.expenses_empty_title),
+            text = stringResource(R.string.income_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.expenses_empty_subtitle),
+            text = stringResource(R.string.income_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -331,7 +322,7 @@ private fun EmptyListState(onAddExpense: () -> Unit) {
         Spacer(Modifier.height(24.dp))
         BillFolderPrimaryButton(
             text = stringResource(R.string.common_add),
-            onClick = onAddExpense,
+            onClick = onAddEntry,
             modifier = Modifier.fillMaxWidth(fraction = 0.7f),
         )
     }

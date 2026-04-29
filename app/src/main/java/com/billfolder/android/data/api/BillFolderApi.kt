@@ -7,13 +7,18 @@ import com.billfolder.android.data.dto.CreateDailyExpenseRequest
 import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
+import com.billfolder.android.data.dto.CreateIncomeEntryRequest
+import com.billfolder.android.data.dto.CreateIncomeSourceRequest
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.HomeResponse
+import com.billfolder.android.data.dto.IncomeEntryResponse
+import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
 import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
+import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -119,4 +124,34 @@ interface BillFolderApi {
         @Path("id") id: String,
         @Body request: UpdateExpenseRequest,
     ): ExpenseResponse
+
+    // ------------------------------------------------------------------------
+    // Incomes — fontes recorrentes + entries individuais
+    // ------------------------------------------------------------------------
+
+    @GET("income-sources")
+    suspend fun getIncomeSources(): List<IncomeSourceResponse>
+
+    @POST("income-sources")
+    suspend fun createIncomeSource(
+        @Body request: CreateIncomeSourceRequest,
+    ): IncomeSourceResponse
+
+    @GET("income-entries")
+    suspend fun getIncomeEntries(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+        @Query("sourceId") sourceId: String? = null,
+    ): List<IncomeEntryResponse>
+
+    @POST("income-entries")
+    suspend fun createIncomeEntry(
+        @Body request: CreateIncomeEntryRequest,
+    ): IncomeEntryResponse
+
+    @PATCH("income-entries/{id}")
+    suspend fun updateIncomeEntry(
+        @Path("id") id: String,
+        @Body request: UpdateIncomeEntryRequest,
+    ): IncomeEntryResponse
 }

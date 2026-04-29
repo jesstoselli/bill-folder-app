@@ -11,6 +11,7 @@ import com.billfolder.android.ui.screens.auth.SignupScreen
 import com.billfolder.android.ui.screens.dailyexpenses.DailyExpensesScreen
 import com.billfolder.android.ui.screens.expenses.ExpensesScreen
 import com.billfolder.android.ui.screens.home.HomeScreen
+import com.billfolder.android.ui.screens.income.IncomeScreen
 
 /**
  * NavHost da raiz. Recebe a flag inicial isLoggedIn pra decidir start destination
@@ -62,6 +63,11 @@ fun BillFolderNavHost(
                 onBack = { navController.popBackStack() },
             )
         }
+        composable(Routes.INCOME) {
+            IncomeScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }
 
@@ -75,6 +81,7 @@ private fun NavHostController.navigateFromDrawer(destination: DrawerDestination)
         DrawerDestination.Home          -> Routes.HOME
         DrawerDestination.DailyExpenses -> Routes.DAILY_EXPENSES
         DrawerDestination.Expenses      -> Routes.EXPENSES
+        DrawerDestination.Income        -> Routes.INCOME
         else -> return // ainda não temos tela; drawer já fechou no caller
     }
     navigate(route) {
