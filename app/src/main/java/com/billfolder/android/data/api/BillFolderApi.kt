@@ -22,6 +22,7 @@ import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
 import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
+import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
@@ -187,6 +188,12 @@ interface BillFolderApi {
     @POST("credit-card-accounts")
     suspend fun createCreditCard(
         @Body request: CreateCreditCardAccountRequest,
+    ): CreditCardAccountResponse
+
+    @PATCH("credit-card-accounts/{id}")
+    suspend fun updateCreditCard(
+        @Path("id") id: String,
+        @Body request: UpdateCreditCardAccountRequest,
     ): CreditCardAccountResponse
 
     @DELETE("credit-card-accounts/{id}")

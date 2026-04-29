@@ -6,6 +6,7 @@ import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
+import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +20,16 @@ class CardsRepository @Inject constructor(
 
     suspend fun createCard(request: CreateCreditCardAccountRequest): CreditCardAccountResponse =
         api.createCreditCard(request)
+
+    /**
+     * PATCH parcial. Backend não recalcula statements/installments —
+     * mudar closingDay/dueDay afeta só lançamentos futuros. Sheet de
+     * edit avisa o user disso.
+     */
+    suspend fun updateCard(
+        id: String,
+        request: UpdateCreditCardAccountRequest,
+    ): CreditCardAccountResponse = api.updateCreditCard(id, request)
 
     /**
      * Deleta o cartão. Backend retorna 204 em sucesso; convertemos

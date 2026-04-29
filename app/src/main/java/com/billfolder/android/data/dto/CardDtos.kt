@@ -38,6 +38,23 @@ data class CreateCreditCardAccountRequest(
 )
 
 /**
+ * PATCH parcial — null = não muda. Backend não recalcula statements/
+ * installments existentes em mudanças de closingDay/dueDay; só novos
+ * lançamentos usam os dias atualizados. Vale avisar o user na sheet
+ * de edit.
+ *
+ * Espelha BillFolder.Application.Dtos.CreditCards.UpdateCreditCardAccountRequest.
+ */
+@Serializable
+data class UpdateCreditCardAccountRequest(
+    @SerialName("name")       val name: String? = null,
+    @SerialName("issuerBank") val issuerBank: String? = null,
+    @SerialName("brand")      val brand: String? = null,
+    @SerialName("closingDay") val closingDay: Int? = null,
+    @SerialName("dueDay")     val dueDay: Int? = null,
+)
+
+/**
  * Card entry (compra). InstallmentsCount é o nº total de parcelas
  * (1 = à vista). O backend gera automaticamente as N installments
  * de Amount/N cada, distribuindo entre statements consecutivos
