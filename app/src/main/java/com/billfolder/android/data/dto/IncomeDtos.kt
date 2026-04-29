@@ -42,6 +42,26 @@ data class CreateIncomeSourceRequest(
     @SerialName("endDate")       val endDate: String? = null,
 )
 
+/**
+ * PATCH parcial — null = não muda. Cross-field: backend valida que
+ * endDate >= startDate (calculando contra valores efetivos pós-update).
+ *
+ * isActive permite "desativar" a fonte sem deletar — entries futuras
+ * paradas, histórico preservado.
+ *
+ * Espelha BillFolder.Application.Dtos.Incomes.UpdateIncomeSourceRequest.
+ */
+@Serializable
+data class UpdateIncomeSourceRequest(
+    @SerialName("origin")        val origin: String? = null,
+    @SerialName("originType")    val originType: String? = null,
+    @SerialName("defaultAmount") val defaultAmount: Double? = null,
+    @SerialName("expectedDay")   val expectedDay: Int? = null,
+    @SerialName("startDate")     val startDate: String? = null,
+    @SerialName("endDate")       val endDate: String? = null,
+    @SerialName("isActive")      val isActive: Boolean? = null,
+)
+
 @Serializable
 data class IncomeEntryResponse(
     @SerialName("id")             val id: String,

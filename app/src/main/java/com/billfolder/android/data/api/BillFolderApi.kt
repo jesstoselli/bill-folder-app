@@ -26,6 +26,7 @@ import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
+import com.billfolder.android.data.dto.UpdateIncomeSourceRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -156,6 +157,15 @@ interface BillFolderApi {
     suspend fun createIncomeSource(
         @Body request: CreateIncomeSourceRequest,
     ): IncomeSourceResponse
+
+    @PATCH("income-sources/{id}")
+    suspend fun updateIncomeSource(
+        @Path("id") id: String,
+        @Body request: UpdateIncomeSourceRequest,
+    ): IncomeSourceResponse
+
+    @DELETE("income-sources/{id}")
+    suspend fun deleteIncomeSource(@Path("id") id: String): Response<Unit>
 
     @GET("income-entries")
     suspend fun getIncomeEntries(

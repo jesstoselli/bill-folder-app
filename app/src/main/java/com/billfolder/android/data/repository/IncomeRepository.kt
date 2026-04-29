@@ -6,6 +6,7 @@ import com.billfolder.android.data.dto.CreateIncomeSourceRequest
 import com.billfolder.android.data.dto.IncomeEntryResponse
 import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
+import com.billfolder.android.data.dto.UpdateIncomeSourceRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,6 +19,24 @@ class IncomeRepository @Inject constructor(
 
     suspend fun createSource(request: CreateIncomeSourceRequest): IncomeSourceResponse =
         api.createIncomeSource(request)
+
+    suspend fun updateSource(
+        id: String,
+        request: UpdateIncomeSourceRequest,
+    ): IncomeSourceResponse = api.updateIncomeSource(id, request)
+
+    /**
+     * Backend deleta a fonte mas preserva entries históricas — FK em
+     * income_entries.source_id é ON DELETE SET NULL. Operação não-
+     * destrutiva pro histórico financeiro do user. Sheet de confirmação
+     * (Passo 4) registra esse comportamento na mensagem.
+     */
+    suspend fun deleteSource(id: String) {
+        val response = api.deleteIncomeSource(id)
+        if (!response.isSuccessful) {
+            throw retrofit2.HttpException(response)
+        }
+    }
 
     // -------- Entries (individuais, do ciclo) --------
     suspend fun listEntries(
