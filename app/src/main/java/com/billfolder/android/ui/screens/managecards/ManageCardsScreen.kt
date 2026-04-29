@@ -44,8 +44,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
+import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.cards.AddCreditCardSheet
-import com.billfolder.android.ui.screens.cards.components.SwipeableCreditCardRow
+import com.billfolder.android.ui.screens.cards.components.CreditCardRow
 import com.billfolder.android.ui.theme.PillShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -155,13 +156,18 @@ private fun Content(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(state.cards, key = { it.id }) { card ->
-            SwipeableCreditCardRow(
-                card = card,
-                pendingDelete = state.pendingDelete,
-                onSwipeToDelete = onRequestDelete,
-                // Tap na row → "despesas no cartão" daquele cartão.
-                onClick = { onCardClick(card.id) },
-            )
+            SwipeToActionRow(
+                isPending = state.pendingDelete?.id == card.id,
+                onDelete = { onRequestDelete(card) },
+                // Edit ainda não — backend não tem PATCH /credit-card-accounts.
+                // Quando entrar, plugar `onEdit = { onRequestEdit(card) }` aqui.
+            ) {
+                CreditCardRow(
+                    card = card,
+                    // Tap na row → "despesas no cartão" daquele cartão.
+                    onClick = { onCardClick(card.id) },
+                )
+            }
         }
         item { Spacer(Modifier.height(80.dp)) }
     }
