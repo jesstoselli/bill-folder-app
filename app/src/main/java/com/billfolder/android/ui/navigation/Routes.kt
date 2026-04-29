@@ -9,4 +9,5 @@ object Routes {
     const val SIGNUP          = "signup"
     const val HOME            = "home"
     const val DAILY_EXPENSES  = "daily-expenses"
+    const val EXPENSES        = "expenses"
 }

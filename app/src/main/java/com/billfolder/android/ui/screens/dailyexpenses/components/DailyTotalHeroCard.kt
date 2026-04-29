@@ -11,20 +11,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.billfolder.android.R
 import com.billfolder.android.ui.theme.MoneyDisplay
 import com.billfolder.android.ui.util.formatBrl
 
 /**
- * Hero card da tela "despesas avulsas". Variante mais sóbria que o
- * hero da Home: usa surfaceContainer (#1E1E1E) sem outline ou hatching,
+ * Hero card "total no ciclo" — reutilizável entre telas de listagem
+ * (despesas avulsas, despesas, recebimentos…). Variante mais sóbria
+ * que o hero da Home: usa surfaceContainer sem outline ou hatching,
  * porque não é a estrela da tela — só dá contexto agregado pra lista.
+ *
+ * Caller passa o label apropriado pra cada contexto. Naming: mantemos
+ * "DailyTotalHeroCard" por compatibilidade da call site, mas semantica
+ * é genérica.
  */
 @Composable
 fun DailyTotalHeroCard(
     total: Double,
+    label: String,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -36,7 +40,7 @@ fun DailyTotalHeroCard(
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                text = stringResource(R.string.daily_total_label),
+                text = label,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -110,6 +110,34 @@
     <string name="add_daily_validation_category_empty">Escolha uma categoria.</string>
     <string name="add_daily_validation_account_empty">Escolha uma conta.</string>
 
+    <!-- Expenses -->
+    <string name="expenses_screen_title">despesas</string>
+    <string name="expenses_total_label">total despesas no ciclo</string>
+    <string name="expenses_section_overdue">atrasadas</string>
+    <string name="expenses_section_upcoming">próximas</string>
+    <string name="expenses_section_paid">pagas</string>
+    <string name="expenses_empty_title">nada por aqui ainda nesse ciclo.</string>
+    <string name="expenses_empty_subtitle">cadastre uma despesa pra começar a planejar.</string>
+    <string name="expenses_no_cycle_title">você não tem um ciclo aberto.</string>
+    <string name="expenses_no_cycle_subtitle">a criação de ciclos chega na próxima etapa do app.</string>
+
+    <!-- Add Expense (sheet) -->
+    <string name="add_expense_title">nova despesa</string>
+    <string name="add_expense_field_due_date">vencimento</string>
+    <string name="add_expense_field_label">descrição</string>
+    <string name="add_expense_field_amount">valor esperado</string>
+    <string name="add_expense_field_category">categoria</string>
+    <string name="add_expense_field_notes">notas (opcional)</string>
+
+    <!-- Pay Expense (sheet) -->
+    <string name="pay_expense_title">marcar como paga</string>
+    <string name="pay_expense_field_paid_date">data do pagamento</string>
+    <string name="pay_expense_field_actual_amount">valor real</string>
+    <string name="pay_expense_field_account">conta de origem</string>
+    <string name="pay_expense_cta">confirmar pagamento</string>
+    <!-- Cabeçalho informativo: %1$s = valor esperado formatado, %2$s = data formatada -->
+    <string name="pay_expense_summary_format">esperado %1$s · vence %2$s</string>
+
     <!-- Daily expenses -->
     <string name="daily_screen_title">despesas avulsas</string>
     <string name="daily_total_label">total avulsas no ciclo</string>

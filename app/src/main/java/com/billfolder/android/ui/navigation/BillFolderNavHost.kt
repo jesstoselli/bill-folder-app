@@ -9,6 +9,7 @@ import com.billfolder.android.ui.components.DrawerDestination
 import com.billfolder.android.ui.screens.auth.LoginScreen
 import com.billfolder.android.ui.screens.auth.SignupScreen
 import com.billfolder.android.ui.screens.dailyexpenses.DailyExpensesScreen
+import com.billfolder.android.ui.screens.expenses.ExpensesScreen
 import com.billfolder.android.ui.screens.home.HomeScreen
 
 /**
@@ -56,6 +57,11 @@ fun BillFolderNavHost(
                 onBack = { navController.popBackStack() },
             )
         }
+        composable(Routes.EXPENSES) {
+            ExpensesScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }
 
@@ -68,6 +74,7 @@ private fun NavHostController.navigateFromDrawer(destination: DrawerDestination)
     val route = when (destination) {
         DrawerDestination.Home          -> Routes.HOME
         DrawerDestination.DailyExpenses -> Routes.DAILY_EXPENSES
+        DrawerDestination.Expenses      -> Routes.EXPENSES
         else -> return // ainda não temos tela; drawer já fechou no caller
     }
     navigate(route) {

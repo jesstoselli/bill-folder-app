@@ -1,31 +1,35 @@
-package com.billfolder.android.ui.screens.dailyexpenses
+package com.billfolder.android.ui.screens.expenses
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,33 +41,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.CircleShape
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
-import com.billfolder.android.data.dto.DailyExpenseResponse
+import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
-import com.billfolder.android.ui.screens.dailyexpenses.components.DailyExpenseRow
 import com.billfolder.android.ui.screens.dailyexpenses.components.DailyTotalHeroCard
-import com.billfolder.android.ui.screens.dailyexpenses.components.DayHeader
+import com.billfolder.android.ui.screens.expenses.components.ExpenseRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
 
 /**
- * Tela "despesas avulsas" — lista das daily expenses no ciclo atual,
- * agrupadas por dia com header relativo ("hoje", "ontem", "29 de abr").
- *
- * Variantes da home: aqui o hero card é mais sóbrio (sem hatching) e
- * mostra apenas o total agregado das avulsas. O FAB é simples (não
- * Speed Dial) — leva direto pro sheet de adicionar avulsa.
+ * Tela de "despesas". Estrutura idêntica à de daily expenses, com 3 seções
+ * separadas por status (atrasadas / próximas / pagas) em vez de
+ * agrupamento por dia. Tap numa row pending ou overdue abre o
+ * PayExpenseSheet pra marcar como pago.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DailyExpensesScreen(
+fun ExpensesScreen(
     onBack: () -> Unit,
-    viewModel: DailyExpensesViewModel = hiltViewModel(),
+    viewModel: ExpensesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    var payingExpense by remember { mutableStateOf<ExpenseResponse?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -71,7 +72,7 @@ fun DailyExpensesScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.daily_screen_title),
+                        text = stringResource(R.string.expenses_screen_title),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
@@ -111,28 +112,34 @@ fun DailyExpensesScreen(
                 .padding(innerPadding),
         ) {
             when (val s = state) {
-                DailyExpensesUiState.Loading -> CenteredLoading()
-                DailyExpensesUiState.NoCycle -> NoCycleEmptyState()
-                is DailyExpensesUiState.Error -> ErrorState(
+                ExpensesUiState.Loading -> CenteredLoading()
+                ExpensesUiState.NoCycle -> NoCycleEmptyState()
+                is ExpensesUiState.Error -> ErrorState(
                     message = s.message,
                     onRetry = viewModel::refresh,
                 )
-                is DailyExpensesUiState.Content -> DailyExpensesContent(
+                is ExpensesUiState.Content -> ExpensesContent(
                     expenses = s.expenses,
                     cycleStart = s.cycle.startDate,
                     cycleEnd = s.cycle.endDate,
                     cycleLabel = s.cycle.label,
                     onAddExpense = { showAddSheet = true },
+                    onPayExpense = { expense -> payingExpense = expense },
                 )
             }
         }
 
-        // Sheet de adicionar avulsa — irmão do Box do conteúdo principal.
-        // ModalBottomSheet do M3 já é overlay próprio, não precisa estar
-        // dentro do Box.
         if (showAddSheet) {
-            AddDailyExpenseSheet(
+            AddExpenseSheet(
                 onDismiss = { showAddSheet = false },
+                onSaved = { viewModel.refresh() },
+            )
+        }
+
+        payingExpense?.let { exp ->
+            PayExpenseSheet(
+                expense = exp,
+                onDismiss = { payingExpense = null },
                 onSaved = { viewModel.refresh() },
             )
         }
@@ -140,17 +147,18 @@ fun DailyExpensesScreen(
 }
 
 @Composable
-private fun DailyExpensesContent(
-    expenses: List<DailyExpenseResponse>,
+private fun ExpensesContent(
+    expenses: List<ExpenseResponse>,
     cycleStart: String,
     cycleEnd: String,
     cycleLabel: String,
     onAddExpense: () -> Unit,
+    onPayExpense: (ExpenseResponse) -> Unit,
 ) {
-    val total = expenses.sumOf { it.amount }
-    // Agrupa por dia mantendo a ordem (mais recente primeiro porque
-    // a lista vem ordenada do VM).
-    val byDay: Map<String, List<DailyExpenseResponse>> = expenses.groupBy { it.date }
+    val total = expenses.sumOf { it.actualAmount ?: it.expectedAmount }
+    val overdue = expenses.filter { it.status.equals("overdue", ignoreCase = true) }
+    val upcoming = expenses.filter { it.status.equals("pending", ignoreCase = true) }
+    val paid = expenses.filter { it.status.equals("paid", ignoreCase = true) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -170,28 +178,69 @@ private fun DailyExpensesContent(
         item {
             DailyTotalHeroCard(
                 total = total,
-                label = stringResource(R.string.daily_total_label),
+                label = stringResource(R.string.expenses_total_label),
             )
         }
 
         if (expenses.isEmpty()) {
             item { EmptyListState(onAddExpense = onAddExpense) }
-        } else {
-            byDay.forEach { (isoDate, dayExpenses) ->
-                item(key = "header-$isoDate") {
-                    DayHeader(
-                        isoDate = isoDate,
-                        dayTotal = dayExpenses.sumOf { it.amount },
-                    )
-                }
-                items(dayExpenses, key = { it.id }) { expense ->
-                    DailyExpenseRow(expense = expense)
-                }
+        }
+
+        if (overdue.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    text = stringResource(R.string.expenses_section_overdue),
+                    showWarningIcon = true,
+                )
+            }
+            items(overdue, key = { it.id }) { exp ->
+                ExpenseRow(expense = exp, onClick = { onPayExpense(exp) })
             }
         }
 
-        // Espaço pro FAB não cobrir o último item.
+        if (upcoming.isNotEmpty()) {
+            item {
+                SectionHeader(text = stringResource(R.string.expenses_section_upcoming))
+            }
+            items(upcoming, key = { it.id }) { exp ->
+                ExpenseRow(expense = exp, onClick = { onPayExpense(exp) })
+            }
+        }
+
+        if (paid.isNotEmpty()) {
+            item { SectionHeader(text = stringResource(R.string.expenses_section_paid)) }
+            // Paid sem onClick — já tá pago, tap não faz nada
+            items(paid, key = { it.id }) { exp ->
+                ExpenseRow(expense = exp, onClick = null)
+            }
+        }
+
         item { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String, showWarningIcon: Boolean = false) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        if (showWarningIcon) {
+            Spacer(Modifier.size(8.dp))
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 
@@ -242,14 +291,14 @@ private fun NoCycleEmptyState() {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(R.string.daily_no_cycle_title),
+                text = stringResource(R.string.expenses_no_cycle_title),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.daily_no_cycle_subtitle),
+                text = stringResource(R.string.expenses_no_cycle_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -267,21 +316,19 @@ private fun EmptyListState(onAddExpense: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.daily_empty_title),
+            text = stringResource(R.string.expenses_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.daily_empty_subtitle),
+            text = stringResource(R.string.expenses_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
-        // CTA explícito no empty state — em estado normal (com itens) o
-        // FAB já é a ação primária e adicionar outro botão seria redundante.
         BillFolderPrimaryButton(
             text = stringResource(R.string.common_add),
             onClick = onAddExpense,

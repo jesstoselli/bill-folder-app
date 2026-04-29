@@ -52,6 +52,7 @@ import com.billfolder.android.ui.components.BillFolderTopBar
 import com.billfolder.android.ui.components.DrawerDestination
 import com.billfolder.android.ui.components.SpeedDialItem
 import com.billfolder.android.ui.screens.dailyexpenses.AddDailyExpenseSheet
+import com.billfolder.android.ui.screens.expenses.AddExpenseSheet
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.screens.home.components.HomeHeroCard
 import com.billfolder.android.ui.screens.home.components.HomeListRow
@@ -80,10 +81,11 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Sheet de "nova avulsa" — gatilho disparado pelo Speed Dial.
-    // Quando outras transações virarem sheets também, esse vira sealed
-    // class de "qual sheet abrir" controlada por uma única var.
+    // Sheets disparados pelo Speed Dial. Quando virarem 5 (income, card,
+    // savings também), refatora pra sealed class "qual sheet abrir"
+    // controlada por uma única var, evitando proliferação de booleans.
     var showAddDailySheet by remember { mutableStateOf(false) }
+    var showAddExpenseSheet by remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -107,13 +109,20 @@ fun HomeScreen(
             onAvatarClick = { viewModel.logout(onDone = onLogout) },
             onRefresh = viewModel::refresh,
             onSpeedDialDaily = { showAddDailySheet = true },
+            onSpeedDialExpense = { showAddExpenseSheet = true },
         )
     }
 
-    // Sheet renderizado fora do drawer pra ficar em cima de tudo.
+    // Sheets renderizados fora do drawer pra ficar em cima de tudo.
     if (showAddDailySheet) {
         AddDailyExpenseSheet(
             onDismiss = { showAddDailySheet = false },
+            onSaved = { viewModel.refresh() },
+        )
+    }
+    if (showAddExpenseSheet) {
+        AddExpenseSheet(
+            onDismiss = { showAddExpenseSheet = false },
             onSaved = { viewModel.refresh() },
         )
     }
@@ -126,6 +135,7 @@ private fun HomeScaffold(
     onAvatarClick: () -> Unit,
     onRefresh: () -> Unit,
     onSpeedDialDaily: () -> Unit,
+    onSpeedDialExpense: () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -159,13 +169,21 @@ private fun HomeScaffold(
 
             // Speed Dial — fica em cima de tudo. Quando fechado, mostra só
             // o FAB pílula. Quando aberto, scrim cobre o conteúdo.
-            BillFolderSpeedDialFab(items = rememberSpeedDialItems(onDaily = onSpeedDialDaily))
+            BillFolderSpeedDialFab(
+                items = rememberSpeedDialItems(
+                    onDaily = onSpeedDialDaily,
+                    onExpense = onSpeedDialExpense,
+                ),
+            )
         }
     }
 }
 
 @Composable
-private fun rememberSpeedDialItems(onDaily: () -> Unit): List<SpeedDialItem> {
+private fun rememberSpeedDialItems(
+    onDaily: () -> Unit,
+    onExpense: () -> Unit,
+): List<SpeedDialItem> {
     val daily   = stringResource(R.string.speed_dial_daily)
     val income  = stringResource(R.string.speed_dial_income)
     val expense = stringResource(R.string.speed_dial_expense)
@@ -195,7 +213,7 @@ private fun rememberSpeedDialItems(onDaily: () -> Unit): List<SpeedDialItem> {
         SpeedDialItem(
             label = expense,
             icon = Icons.AutoMirrored.Filled.ReceiptLong,
-            onClick = { /* TODO sheet de expense */ },
+            onClick = onExpense,
         ),
         SpeedDialItem(
             label = daily,
