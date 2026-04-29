@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -28,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -47,6 +50,7 @@ import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.ui.components.BillFolderTotalCard
+import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.cards.components.AddCardChip
 import com.billfolder.android.ui.screens.cards.components.CardCarouselChip
 import com.billfolder.android.ui.screens.cards.components.CardEntryRow
@@ -137,6 +141,8 @@ fun CardsScreen(
                     state = s,
                     onSelectCard = viewModel::onSelectCard,
                     onAddCard = { showAddCardSheet = true },
+                    onRequestDeleteEntry = viewModel::requestDelete,
+                    onRequestEditEntry = viewModel::requestEdit,
                 )
             }
         }
@@ -154,6 +160,30 @@ fun CardsScreen(
                 onSaved = { viewModel.refresh() },
             )
         }
+
+        // Sheet de editar entry (modo edit). Reusa AddCardEntrySheet com
+        // `existing`. PATCH só toca em label/categoria/notes — campos
+        // cartão/data/valor/parcelas ficam disabled.
+        val current = state
+        if (current is CardsUiState.Content && current.editing != null) {
+            AddCardEntrySheet(
+                existing = current.editing,
+                onDismiss = viewModel::cancelEdit,
+                onSaved = {
+                    viewModel.cancelEdit()
+                    viewModel.refresh()
+                },
+            )
+        }
+
+        // Dialog de confirmação de delete da entry — atrelado ao pendingDelete.
+        if (current is CardsUiState.Content && current.pendingDelete != null) {
+            DeleteCardEntryDialog(
+                entryLabel = current.pendingDelete.label,
+                onConfirm = viewModel::confirmDelete,
+                onCancel = viewModel::cancelDelete,
+            )
+        }
     }
 }
 
@@ -162,6 +192,8 @@ private fun Content(
     state: CardsUiState.Content,
     onSelectCard: (String) -> Unit,
     onAddCard: () -> Unit,
+    onRequestDeleteEntry: (com.billfolder.android.data.dto.CardEntryResponse) -> Unit,
+    onRequestEditEntry: (com.billfolder.android.data.dto.CardEntryResponse) -> Unit,
 ) {
     val entries = state.entriesForSelectedCard()
     val total = entries.sumOf { it.totalAmount }
@@ -201,12 +233,59 @@ private fun Content(
             item { NoEntriesState() }
         } else {
             items(entries, key = { it.id }) { entry ->
-                CardEntryRow(entry = entry)
+                SwipeToActionRow(
+                    isPending = state.pendingDelete?.id == entry.id ||
+                        state.editing?.id == entry.id,
+                    onDelete = { onRequestDeleteEntry(entry) },
+                    onEdit = { onRequestEditEntry(entry) },
+                ) {
+                    CardEntryRow(entry = entry)
+                }
             }
         }
 
         item { Spacer(Modifier.height(80.dp)) }
     }
+}
+
+/**
+ * Dialog de confirmação de delete de CardEntry. Mensagem deixa explícito
+ * que parcelas associadas vão junto e que faturas serão recalculadas
+ * (operação não-trivial, vale o aviso).
+ */
+@Composable
+private fun DeleteCardEntryDialog(
+    entryLabel: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(text = stringResource(R.string.card_entry_delete_dialog_title))
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.card_entry_delete_dialog_message, entryLabel),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(stringResource(R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
 }
 
 @Composable

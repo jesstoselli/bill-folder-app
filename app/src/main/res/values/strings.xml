@@ -159,8 +159,9 @@
     <string name="add_card_validation_closing_day">Dia de fechamento entre 1 e 31.</string>
     <string name="add_card_validation_due_day">Dia de vencimento entre 1 e 31.</string>
 
-    <!-- Add Card Entry (sheet) — compra no cartão -->
+    <!-- Add / Edit Card Entry (sheet) — compra no cartão -->
     <string name="add_card_entry_title">nova compra no cartão</string>
+    <string name="add_card_entry_title_edit">editar compra no cartão</string>
     <string name="add_card_entry_field_card">cartão</string>
     <string name="add_card_entry_field_purchase_date">data da compra</string>
     <string name="add_card_entry_field_label">descrição</string>
@@ -172,6 +173,12 @@
     <string name="add_card_entry_validation_installments">Parcelas precisa ser pelo menos 1.</string>
     <!-- preview do parcelamento, ex: "6x R$ 116,65" -->
     <string name="add_card_entry_installments_preview_format">%1$dx %2$s</string>
+    <!-- Aviso mostrado em modo edit pra explicar campos disabled -->
+    <string name="add_card_entry_edit_locked_hint">cartão, data, valor e parcelas não podem ser editados — pra mudar, deleta e cria de novo.</string>
+
+    <!-- Delete Card Entry (dialog) -->
+    <string name="card_entry_delete_dialog_title">deletar compra?</string>
+    <string name="card_entry_delete_dialog_message">isso vai apagar \"%1$s\" e todas as parcelas associadas. as faturas afetadas serão recalculadas.</string>
 
     <!-- Incomes (recebimentos) -->
     <string name="income_screen_title">recebimentos</string>

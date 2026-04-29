@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
+import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.ui.components.BillFolderDateField
 import com.billfolder.android.ui.components.BillFolderDropdown
 import com.billfolder.android.ui.components.BillFolderMoneyField
@@ -26,13 +27,28 @@ import com.billfolder.android.ui.components.BillFolderTransactionSheet
 import com.billfolder.android.ui.components.DropdownOption
 import com.billfolder.android.ui.util.formatBrl
 
+/**
+ * Sheet de "nova/editar compra no cartão". Em modo edit (existing != null):
+ *  - Título "editar compra...", CTA "atualizar".
+ *  - Campos cartão/data/valor/parcelas ficam DISABLED — backend só aceita
+ *    label/categoria/notes no PATCH (ver UpdateCardEntryRequest). Pra
+ *    mudar valor/parcelas, user deleta e recria.
+ *  - Hint texto explica a limitação visualmente.
+ */
 @Composable
 fun AddCardEntrySheet(
     onDismiss: () -> Unit,
     onSaved: () -> Unit,
+    existing: CardEntryResponse? = null,
     viewModel: AddCardEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(existing) {
+        if (existing != null) {
+            viewModel.prefill(existing)
+        }
+    }
 
     val labelEmpty = stringResource(R.string.add_daily_validation_label_empty)
     val amountInvalid = stringResource(R.string.add_daily_validation_amount_invalid)
@@ -47,14 +63,26 @@ fun AddCardEntrySheet(
         }
     }
 
+    val isEditing = state.editingId != null
+    val title = if (isEditing) {
+        stringResource(R.string.add_card_entry_title_edit)
+    } else {
+        stringResource(R.string.add_card_entry_title)
+    }
+    val ctaText = if (isEditing) {
+        stringResource(R.string.sheet_update_cta)
+    } else {
+        stringResource(R.string.sheet_save_cta)
+    }
+
     BillFolderTransactionSheet(
-        title = stringResource(R.string.add_card_entry_title),
+        title = title,
         onDismiss = onDismiss,
         isSaving = state.isSaving,
         errorMessage = state.errorMessage,
         footer = {
             BillFolderPrimaryButton(
-                text = stringResource(R.string.sheet_save_cta),
+                text = ctaText,
                 onClick = {
                     viewModel.submit(
                         labelEmptyMessage = labelEmpty,
@@ -85,19 +113,30 @@ fun AddCardEntrySheet(
             ?.namePt
             ?: ""
 
+        // Aviso explicando os campos lockados em modo edit. Mostrado uma
+        // vez no topo do form pra não poluir cada campo individualmente.
+        if (isEditing) {
+            Text(
+                text = stringResource(R.string.add_card_entry_edit_locked_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
         BillFolderDropdown(
             label = stringResource(R.string.add_card_entry_field_card),
             selectedLabel = selectedCardLabel,
             options = cardOptions,
             onSelect = viewModel::onCardChange,
-            enabled = !state.isSaving && cardOptions.isNotEmpty(),
+            // Disabled em modo edit (backend não aceita mudar cartão).
+            enabled = !state.isSaving && cardOptions.isNotEmpty() && !isEditing,
         )
 
         BillFolderDateField(
             isoDate = state.purchaseDate,
             onIsoDateChange = viewModel::onPurchaseDateChange,
             label = stringResource(R.string.add_card_entry_field_purchase_date),
-            enabled = !state.isSaving,
+            enabled = !state.isSaving && !isEditing,
         )
 
         BillFolderTextField(
@@ -113,7 +152,7 @@ fun AddCardEntrySheet(
             value = state.totalAmount,
             onValueChange = viewModel::onTotalAmountChange,
             label = stringResource(R.string.add_card_entry_field_total_amount),
-            enabled = !state.isSaving,
+            enabled = !state.isSaving && !isEditing,
             imeAction = ImeAction.Next,
         )
 
@@ -122,7 +161,7 @@ fun AddCardEntrySheet(
             onValueChange = viewModel::onInstallmentsChange,
             label = { Text(stringResource(R.string.add_card_entry_field_installments)) },
             singleLine = true,
-            enabled = !state.isSaving,
+            enabled = !state.isSaving && !isEditing,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Next,

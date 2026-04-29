@@ -2,9 +2,11 @@ package com.billfolder.android.ui.screens.cards
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
+import com.billfolder.android.data.dto.UpdateCardEntryRequest
 import com.billfolder.android.data.repository.CardsRepository
 import com.billfolder.android.data.repository.ReferenceDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +23,16 @@ import java.io.IOException
 import java.time.LocalDate
 import javax.inject.Inject
 
+/**
+ * Form de "nova/editar compra no cartão".
+ *
+ * Modos:
+ *  - Create (editingId == null): POST com todos os campos.
+ *  - Edit (editingId != null): PATCH só com label/categoryId/notes —
+ *    backend não permite mudar cartão/data/valor/parcelas (mexer em
+ *    qualquer um exigiria recalcular installments e mover entre
+ *    statements). Sheet bloqueia esses campos visualmente.
+ */
 data class AddCardEntryFormState(
     val purchaseDate: String = LocalDate.now().toString(),
     val label: String = "",
@@ -37,6 +49,8 @@ data class AddCardEntryFormState(
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val savedSuccessfully: Boolean = false,
+
+    val editingId: String? = null,
 )
 
 @HiltViewModel
@@ -60,6 +74,29 @@ class AddCardEntryViewModel @Inject constructor(
     fun onCategoryChange(id: String) = _state.update { it.copy(selectedCategoryId = id) }
     fun onNotesChange(value: String) = _state.update { it.copy(notes = value) }
 
+    /**
+     * Preenche o form com uma entry existente — modo edit. Todos os campos
+     * são populados pra dar contexto ao user, mas só label/categoria/notes
+     * vão ser submetidos no PATCH (sheet desabilita os outros visualmente).
+     * Idempotente — checa editingId pra não resetar.
+     */
+    fun prefill(item: CardEntryResponse) {
+        if (_state.value.editingId == item.id) return
+        _state.update {
+            it.copy(
+                editingId = item.id,
+                purchaseDate = item.purchaseDate,
+                label = item.label,
+                totalAmount = item.totalAmount.toBrlInputString(),
+                installmentsCount = item.installmentsCount.toString(),
+                selectedCardId = item.cardId,
+                selectedCategoryId = item.categoryId,
+                notes = item.notes.orEmpty(),
+                errorMessage = null,
+            )
+        }
+    }
+
     fun submit(
         labelEmptyMessage: String,
         amountInvalidMessage: String,
@@ -68,36 +105,57 @@ class AddCardEntryViewModel @Inject constructor(
         categoryEmptyMessage: String,
     ) {
         val current = _state.value
-        val parsedAmount = parseAmount(current.totalAmount) ?: 0.0
-        val parsedInstallments = current.installmentsCount.toIntOrNull() ?: 0
 
-        val validationError = when {
-            current.label.isBlank()                      -> labelEmptyMessage
-            parsedAmount <= 0                            -> amountInvalidMessage
-            current.selectedCardId.isNullOrBlank()       -> cardEmptyMessage
-            parsedInstallments < 1                       -> installmentsInvalidMessage
-            current.selectedCategoryId.isNullOrBlank()   -> categoryEmptyMessage
-            else                                          -> null
+        // Em modo edit, validamos só os campos que vão no PATCH (label,
+        // categoria). Os outros já são imutáveis pelo prefill, sem motivo
+        // pra revalidar.
+        val validationError = if (current.editingId != null) {
+            when {
+                current.label.isBlank()                    -> labelEmptyMessage
+                current.selectedCategoryId.isNullOrBlank() -> categoryEmptyMessage
+                else                                       -> null
+            }
+        } else {
+            val parsedAmount = parseAmount(current.totalAmount) ?: 0.0
+            val parsedInstallments = current.installmentsCount.toIntOrNull() ?: 0
+            when {
+                current.label.isBlank()                    -> labelEmptyMessage
+                parsedAmount <= 0                          -> amountInvalidMessage
+                current.selectedCardId.isNullOrBlank()     -> cardEmptyMessage
+                parsedInstallments < 1                     -> installmentsInvalidMessage
+                current.selectedCategoryId.isNullOrBlank() -> categoryEmptyMessage
+                else                                       -> null
+            }
         }
         if (validationError != null) {
             _state.update { it.copy(errorMessage = validationError) }
             return
         }
 
-        val request = CreateCardEntryRequest(
-            cardId = current.selectedCardId!!,
-            purchaseDate = current.purchaseDate,
-            label = current.label.trim(),
-            totalAmount = parsedAmount,
-            installmentsCount = parsedInstallments,
-            categoryId = current.selectedCategoryId!!,
-            notes = current.notes.takeIf { it.isNotBlank() }?.trim(),
-        )
-
         _state.update { it.copy(isSaving = true, errorMessage = null) }
+
         viewModelScope.launch {
             try {
-                cardsRepository.createEntry(request)
+                if (current.editingId != null) {
+                    // PATCH limitado: backend só aceita label/categoria/notes.
+                    val request = UpdateCardEntryRequest(
+                        label = current.label.trim(),
+                        categoryId = current.selectedCategoryId,
+                        notes = current.notes.trim(),
+                    )
+                    cardsRepository.updateEntry(current.editingId, request)
+                } else {
+                    val request = CreateCardEntryRequest(
+                        cardId = current.selectedCardId!!,
+                        purchaseDate = current.purchaseDate,
+                        label = current.label.trim(),
+                        totalAmount = parseAmount(current.totalAmount)!!,
+                        installmentsCount = current.installmentsCount.toInt(),
+                        categoryId = current.selectedCategoryId!!,
+                        notes = current.notes.takeIf { it.isNotBlank() }?.trim(),
+                    )
+                    cardsRepository.createEntry(request)
+                }
                 _state.update { it.copy(isSaving = false, savedSuccessfully = true) }
             } catch (e: HttpException) {
                 _state.update { it.copy(isSaving = false, errorMessage = "Erro do servidor (HTTP ${e.code()}).") }
@@ -124,7 +182,8 @@ class AddCardEntryViewModel @Inject constructor(
                     it.copy(
                         cards = cards,
                         categories = categories,
-                        // Pré-seleciona o único cartão se só tem um
+                        // Pré-seleciona o único cartão se só tem um. Em modo edit,
+                        // respeita o que veio do prefill (já tem selectedCardId).
                         selectedCardId = it.selectedCardId
                             ?: cards.firstOrNull()?.id,
                         isLoadingReferences = false,
@@ -143,4 +202,8 @@ class AddCardEntryViewModel @Inject constructor(
 
     private fun parseAmount(input: String): Double? =
         input.replace(',', '.').toDoubleOrNull()
+
+    /** "1234.5" → "1234,50" pra preencher o MoneyField em modo edit. */
+    private fun Double.toBrlInputString(): String =
+        "%.2f".format(this).replace('.', ',')
 }
