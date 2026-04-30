@@ -22,6 +22,18 @@ object Routes {
     const val CARDS_ARG_ID    = "cardId"
     fun cardsWithSelected(cardId: String) = "cards?cardId=$cardId"
 
+    /**
+     * Savings (consumo) — mesmo molde do Cards. savingsAccountId opcional
+     * como query arg pra abrir já com aquela poupança selecionada no
+     * carousel; sem o arg ("savings"), cai no comportamento default
+     * (primeira poupança).
+     */
+    const val SAVINGS_PATTERN = "savings?savingsAccountId={savingsAccountId}"
+    const val SAVINGS         = "savings"
+    const val SAVINGS_ARG_ID  = "savingsAccountId"
+    fun savingsWithSelected(savingsAccountId: String) =
+        "savings?savingsAccountId=$savingsAccountId"
+
     const val MANAGE_CARDS    = "manage-cards"
     const val MANAGE_SAVINGS  = "manage-savings"
 }
