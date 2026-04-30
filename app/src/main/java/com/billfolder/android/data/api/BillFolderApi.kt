@@ -11,6 +11,7 @@ import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.CreateIncomeEntryRequest
 import com.billfolder.android.data.dto.CreateIncomeSourceRequest
 import com.billfolder.android.data.dto.CreateSavingsAccountRequest
+import com.billfolder.android.data.dto.CreateSavingsTransactionRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
@@ -22,6 +23,7 @@ import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
 import com.billfolder.android.data.dto.SavingsAccountResponse
+import com.billfolder.android.data.dto.SavingsTransactionResponse
 import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
@@ -30,6 +32,7 @@ import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
 import com.billfolder.android.data.dto.UpdateIncomeSourceRequest
 import com.billfolder.android.data.dto.UpdateSavingsAccountRequest
+import com.billfolder.android.data.dto.UpdateSavingsTransactionRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -265,4 +268,42 @@ interface BillFolderApi {
 
     @DELETE("savings-accounts/{id}")
     suspend fun deleteSavingsAccount(@Path("id") id: String): Response<Unit>
+
+    // ------------------------------------------------------------------------
+    // Savings transactions (movimentações da poupança)
+    //
+    // Atenção: route group separado de /savings-accounts (não nested). O
+    // backend filtra por savingsAccountId via query param.
+    //
+    // Filtros: from/to em ISO yyyy-MM-dd; type aceita os 5 valores camelCase
+    // (deposit/withdrawal/yield/transferOut/transferIn) — backend valida
+    // case-insensitive e retorna 400 'invalid_type' se não bater.
+    //
+    // Pra "transações dessa poupança no ciclo atual", manda:
+    //   savingsAccountId=<id>&from=<cycle.start>&to=<cycle.end>
+    //
+    // backend serializa enum como camelCase via JsonStringEnumConverter.
+    // ------------------------------------------------------------------------
+
+    @GET("savings-transactions")
+    suspend fun getSavingsTransactions(
+        @Query("savingsAccountId") savingsAccountId: String? = null,
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+        @Query("type") type: String? = null,
+    ): List<SavingsTransactionResponse>
+
+    @POST("savings-transactions")
+    suspend fun createSavingsTransaction(
+        @Body request: CreateSavingsTransactionRequest,
+    ): SavingsTransactionResponse
+
+    @PATCH("savings-transactions/{id}")
+    suspend fun updateSavingsTransaction(
+        @Path("id") id: String,
+        @Body request: UpdateSavingsTransactionRequest,
+    ): SavingsTransactionResponse
+
+    @DELETE("savings-transactions/{id}")
+    suspend fun deleteSavingsTransaction(@Path("id") id: String): Response<Unit>
 }
