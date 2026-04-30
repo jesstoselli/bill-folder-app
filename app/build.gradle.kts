@@ -28,7 +28,8 @@ android {
         debug {
             // Aponta pro Kestrel local (do .NET) — emulador acessa o host
             // pelo alias 10.0.2.2 (não localhost, que é o próprio emulador).
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5077/v1/\"")
+//            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5077/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://192.168.2.109:5077/v1/\"")
             isMinifyEnabled = false
         }
         release {

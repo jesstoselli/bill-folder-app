@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,13 @@ import com.billfolder.android.R
  *
  * Avatar é placeholder por enquanto (ícone de pessoa em círculo com border
  * primary, conforme DS). Quando tivermos foto do user no /me, substitui aí.
+ *
+ * Edge-to-edge: o app chama enableEdgeToEdge() na MainActivity (default em
+ * Android 15+). Como esse top bar é um Row custom (não o TopAppBar do M3
+ * que já gerencia insets via TopAppBarDefaults.windowInsets), aplicamos
+ * statusBarsPadding() aqui pra que o conteúdo (☰/wordmark/avatar) não
+ * fique por baixo dos ícones do sistema (relógio, sinal, bateria, etc).
+ * O height(64.dp) continua valendo pro corpo visível abaixo dos insets.
  */
 @Composable
 fun BillFolderTopBar(
@@ -44,6 +52,7 @@ fun BillFolderTopBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .height(64.dp)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
