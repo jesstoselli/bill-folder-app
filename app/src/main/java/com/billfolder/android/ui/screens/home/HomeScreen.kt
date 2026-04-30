@@ -86,6 +86,12 @@ fun HomeScreen(
     var showAddCardSheet by remember { mutableStateOf(false) }
     var showAddSavingsTransactionSheet by remember { mutableStateOf(false) }
 
+    // Atalho de poupança no Speed Dial só é habilitado quando o user
+    // tem ao menos uma SavingsAccount cadastrada. Em estados pré-Content
+    // (Loading/Error/NoCycle) o atalho fica disabled por padrão — visual
+    // conservador, evita ser tocado durante carregamento.
+    val savingsShortcutEnabled = (state as? HomeUiState.Content)?.hasAnySavingsAccount == true
+
     HomeScaffold(
         state = state,
         onMenuClick = onMenuClick,
@@ -96,6 +102,7 @@ fun HomeScreen(
         onSpeedDialIncome = { showAddIncomeSheet = true },
         onSpeedDialCard = { showAddCardSheet = true },
         onSpeedDialSavings = { showAddSavingsTransactionSheet = true },
+        savingsShortcutEnabled = savingsShortcutEnabled,
     )
 
     // Sheets renderizados fora do drawer pra ficar em cima de tudo.
@@ -148,6 +155,7 @@ private fun HomeScaffold(
     onSpeedDialIncome: () -> Unit,
     onSpeedDialCard: () -> Unit,
     onSpeedDialSavings: () -> Unit,
+    savingsShortcutEnabled: Boolean,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -188,6 +196,7 @@ private fun HomeScaffold(
                     onIncome = onSpeedDialIncome,
                     onCard = onSpeedDialCard,
                     onSavings = onSpeedDialSavings,
+                    savingsEnabled = savingsShortcutEnabled,
                 ),
             )
         }
@@ -201,6 +210,7 @@ private fun rememberSpeedDialItems(
     onIncome: () -> Unit,
     onCard: () -> Unit,
     onSavings: () -> Unit,
+    savingsEnabled: Boolean,
 ): List<SpeedDialItem> {
     val daily   = stringResource(R.string.speed_dial_daily)
     val income  = stringResource(R.string.speed_dial_income)
@@ -212,11 +222,17 @@ private fun rememberSpeedDialItems(
     // por último na lista — é o que renderiza mais próximo do main FAB
     // quando o Speed Dial expande. Avulsa é o mais usado no dia-a-dia,
     // poupança o menos.
+    //
+    // Poupança é o único atalho condicional: fica disabled visualmente
+    // (opacity 0.38) quando o user ainda não tem nenhuma SavingsAccount
+    // cadastrada. Os outros 4 ficam sempre enabled — qualquer um pode
+    // ser usado no dia-1 do app sem dependência de cadastro prévio.
     return listOf(
         SpeedDialItem(
             label = savings,
             icon = Icons.Default.Savings,
             onClick = onSavings,
+            enabled = savingsEnabled,
         ),
         SpeedDialItem(
             label = income,

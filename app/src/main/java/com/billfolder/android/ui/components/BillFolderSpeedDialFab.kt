@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -42,12 +43,18 @@ import com.billfolder.android.ui.theme.PillShape
 /**
  * Item do Speed Dial: ícone + label + ação. Cada um vira um mini-FAB
  * com label em pílula à esquerda.
+ *
+ * Quando `enabled = false`, o item renderiza com opacity reduzida (visual
+ * de "atalho indisponível") e o tap vira no-op. Útil pra atalhos que
+ * dependem de pré-condição — ex: "poupança" só faz sentido se o user já
+ * cadastrou ao menos uma SavingsAccount.
  */
 data class SpeedDialItem(
     val label: String,
     val icon: ImageVector,
     val contentDescription: String = label,
     val onClick: () -> Unit,
+    val enabled: Boolean = true,
 )
 
 /**
@@ -115,8 +122,13 @@ fun BillFolderSpeedDialFab(
                     SpeedDialMiniItem(
                         item = item,
                         onClick = {
-                            isOpen = false
-                            item.onClick()
+                            // Disabled item → tap é no-op. Não fechamos o
+                            // Speed Dial: o user vê os outros atalhos
+                            // disponíveis e pode escolher outro.
+                            if (item.enabled) {
+                                isOpen = false
+                                item.onClick()
+                            }
                         },
                     )
                 }
@@ -132,7 +144,15 @@ fun BillFolderSpeedDialFab(
 
 @Composable
 private fun SpeedDialMiniItem(item: SpeedDialItem, onClick: () -> Unit) {
+    // Single source of truth pra opacity. M3 não tem token oficial pra
+    // "disabled state" do FloatingActionButton (ele não suporta enabled
+    // nativamente), então aplicamos via alpha no Modifier do Row inteiro
+    // — atinge label E mini-FAB de uma vez. Valor 0.38 vem do M3 spec
+    // pra estados disabled (mesmo do TextButton.colors disabled).
+    val itemAlpha = if (item.enabled) 1f else 0.38f
+
     Row(
+        modifier = Modifier.alpha(itemAlpha),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -152,7 +172,11 @@ private fun SpeedDialMiniItem(item: SpeedDialItem, onClick: () -> Unit) {
             )
         }
 
-        // Mini-FAB redondo, primary
+        // Mini-FAB redondo, primary. Tap continua chamando `onClick`
+        // mesmo quando disabled — o handler no caller (Speed Dial) é
+        // que checa item.enabled antes de propagar. Mantemos assim pra
+        // que o tap em item disabled não pareça "morto" (ripple ainda
+        // dispara), só não abra a sheet.
         FloatingActionButton(
             onClick = onClick,
             modifier = Modifier.size(40.dp),
