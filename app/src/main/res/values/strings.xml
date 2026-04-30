@@ -283,6 +283,33 @@
     <!-- Cabeçalho informativo: %1$s = valor esperado formatado, %2$s = data formatada -->
     <string name="pay_expense_summary_format">esperado %1$s · vence %2$s</string>
 
+    <!-- Savings — consumo (poupança, do drawer principal) -->
+    <string name="savings_screen_title">poupança</string>
+    <string name="savings_empty_title">você ainda não tem poupanças cadastradas.</string>
+    <string name="savings_empty_subtitle">cadastre uma poupança em "gerenciar > poupanças" pra começar a registrar depósitos, retiradas e rendimentos.</string>
+    <string name="savings_no_transactions_title">sem movimentações nessa poupança no ciclo.</string>
+    <string name="savings_no_transactions_subtitle">toque no botão pra registrar a primeira movimentação.</string>
+    <string name="savings_total_label">movimentado nessa poupança no ciclo</string>
+    <string name="savings_chip_add_new_label">nova</string>
+    <!-- subtitle do total card por sinal do net flow -->
+    <string name="savings_net_flow_inflow_format">entrou líquido %1$s no ciclo</string>
+    <string name="savings_net_flow_outflow_format">saiu líquido %1$s no ciclo</string>
+    <string name="savings_net_flow_neutral">movimentação neutra no ciclo</string>
+
+    <!-- Savings transaction row -->
+    <!-- subtítulo da row: "depósito · 23 de mar" (tipo · data) -->
+    <string name="savings_transaction_subtitle_format">%1$s · %2$s</string>
+    <!-- tipos da SavingsTransaction (camelCase no backend, label PT na UI) -->
+    <string name="savings_transaction_type_deposit">depósito</string>
+    <string name="savings_transaction_type_withdrawal">retirada</string>
+    <string name="savings_transaction_type_yield">rendimento</string>
+    <string name="savings_transaction_type_transfer_out">transferência (saída)</string>
+    <string name="savings_transaction_type_transfer_in">transferência (entrada)</string>
+
+    <!-- Delete Savings Transaction (dialog) -->
+    <string name="savings_transaction_delete_dialog_title">deletar movimentação?</string>
+    <string name="savings_transaction_delete_dialog_message">isso vai apagar essa movimentação permanentemente. essa ação não pode ser desfeita.</string>
+
     <!-- Manage Savings (gerenciar > poupanças) -->
     <string name="manage_savings_screen_title">poupanças</string>
     <string name="manage_savings_empty_title">você ainda não tem poupanças cadastradas.</string>
