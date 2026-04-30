@@ -10,6 +10,7 @@ import com.billfolder.android.data.dto.CreateDailyExpenseRequest
 import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.CreateIncomeEntryRequest
 import com.billfolder.android.data.dto.CreateIncomeSourceRequest
+import com.billfolder.android.data.dto.CreateSavingsAccountRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
@@ -20,6 +21,7 @@ import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
+import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
@@ -27,6 +29,7 @@ import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
 import com.billfolder.android.data.dto.UpdateIncomeSourceRequest
+import com.billfolder.android.data.dto.UpdateSavingsAccountRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -236,4 +239,30 @@ interface BillFolderApi {
 
     @DELETE("card-entries/{id}")
     suspend fun deleteCardEntry(@Path("id") id: String): Response<Unit>
+
+    // ------------------------------------------------------------------------
+    // Savings accounts (CRUD da conta poupança)
+    //
+    // Vínculo 1:1 com checking — backend retorna 409 "checking_already_has_savings"
+    // se a checking selecionada já tiver uma poupança. PATCH só aceita
+    // bankName/branch/accountNumber/initialBalance; checkingAccountId é
+    // imutável.
+    // ------------------------------------------------------------------------
+
+    @GET("savings-accounts")
+    suspend fun getSavingsAccounts(): List<SavingsAccountResponse>
+
+    @POST("savings-accounts")
+    suspend fun createSavingsAccount(
+        @Body request: CreateSavingsAccountRequest,
+    ): SavingsAccountResponse
+
+    @PATCH("savings-accounts/{id}")
+    suspend fun updateSavingsAccount(
+        @Path("id") id: String,
+        @Body request: UpdateSavingsAccountRequest,
+    ): SavingsAccountResponse
+
+    @DELETE("savings-accounts/{id}")
+    suspend fun deleteSavingsAccount(@Path("id") id: String): Response<Unit>
 }
