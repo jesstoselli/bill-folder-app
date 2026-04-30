@@ -36,6 +36,7 @@
     <string name="drawer_adjustments">ajustes do ciclo</string>
     <string name="drawer_section_manage">gerenciar</string>
     <string name="drawer_manage_cards">cartões</string>
+    <string name="drawer_manage_savings">poupanças</string>
     <string name="drawer_manage_banks">bancos</string>
     <string name="drawer_footer">app by jess.to</string>
     <string name="drawer_close_content_description">fechar menu</string>
@@ -281,6 +282,37 @@
     <string name="pay_expense_cta">confirmar pagamento</string>
     <!-- Cabeçalho informativo: %1$s = valor esperado formatado, %2$s = data formatada -->
     <string name="pay_expense_summary_format">esperado %1$s · vence %2$s</string>
+
+    <!-- Manage Savings (gerenciar > poupanças) -->
+    <string name="manage_savings_screen_title">poupanças</string>
+    <string name="manage_savings_empty_title">você ainda não tem poupanças cadastradas.</string>
+    <string name="manage_savings_empty_subtitle">cadastre uma poupança vinculada à sua conta corrente pra acompanhar depósitos, retiradas e rendimentos.</string>
+    <string name="manage_savings_delete_dialog_title">deletar poupança?</string>
+    <!-- %1$s = nome do banco da poupança -->
+    <string name="manage_savings_delete_dialog_message">isso vai apagar a poupança do "%1$s" permanentemente, junto com todas as movimentações associadas (depósitos, retiradas e rendimentos). essa ação não pode ser desfeita.</string>
+
+    <!-- Savings Account Row -->
+    <!-- subtítulo da row: "agência 0001 · conta 12345-6" -->
+    <string name="savings_account_subtitle_format">ag. %1$s · cc. %2$s</string>
+    <string name="savings_account_initial_balance_label">saldo inicial</string>
+
+    <!-- Add / Edit Savings Account (sheet) -->
+    <string name="add_savings_title">nova poupança</string>
+    <string name="add_savings_title_edit">editar poupança</string>
+    <string name="add_savings_field_checking">conta corrente vinculada</string>
+    <string name="add_savings_field_bank_name">banco</string>
+    <string name="add_savings_field_branch">agência</string>
+    <string name="add_savings_field_account_number">número da conta</string>
+    <string name="add_savings_field_initial_balance">saldo inicial</string>
+    <string name="add_savings_validation_checking_empty">Escolha a conta corrente que vai ficar vinculada.</string>
+    <string name="add_savings_validation_bank_name">Informe o banco.</string>
+    <string name="add_savings_validation_branch">Informe a agência.</string>
+    <string name="add_savings_validation_account_number">Informe o número da conta.</string>
+    <string name="add_savings_validation_initial_balance">Saldo inicial precisa ser zero ou positivo.</string>
+    <!-- Backend retorna 409 quando a checking selecionada já tem poupança -->
+    <string name="add_savings_error_duplicate_checking">Essa conta corrente já tem uma poupança vinculada. Cada conta corrente pode ter apenas uma poupança.</string>
+    <!-- Aviso em modo edit, abaixo do dropdown de checking desabilitado -->
+    <string name="add_savings_edit_checking_hint">o vínculo com a conta corrente não pode ser alterado depois de criada. pra mudar, deleta a poupança e cria de novo.</string>
 
     <!-- Daily expenses -->
     <string name="daily_screen_title">despesas avulsas</string>

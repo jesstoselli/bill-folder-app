@@ -50,6 +50,7 @@ enum class DrawerDestination {
     Savings,
     Adjustments,
     ManageCards,
+    ManageSavings,
     ManageBanks,
 }
 
@@ -152,6 +153,12 @@ fun BillFolderDrawer(
                 icon = Icons.Default.CreditCard,
                 selected = selected == DrawerDestination.ManageCards,
                 onClick = { onNavigate(DrawerDestination.ManageCards) },
+            )
+            DrawerItem(
+                label = stringResource(R.string.drawer_manage_savings),
+                icon = Icons.Default.Savings,
+                selected = selected == DrawerDestination.ManageSavings,
+                onClick = { onNavigate(DrawerDestination.ManageSavings) },
             )
             DrawerItem(
                 label = stringResource(R.string.drawer_manage_banks),

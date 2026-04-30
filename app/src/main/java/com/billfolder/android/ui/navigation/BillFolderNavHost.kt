@@ -23,6 +23,7 @@ import com.billfolder.android.ui.screens.expenses.ExpensesScreen
 import com.billfolder.android.ui.screens.home.HomeScreen
 import com.billfolder.android.ui.screens.income.IncomeScreen
 import com.billfolder.android.ui.screens.managecards.ManageCardsScreen
+import com.billfolder.android.ui.screens.managesavings.ManageSavingsScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -145,6 +146,13 @@ fun BillFolderNavHost(
                     },
                 )
             }
+            composable(Routes.MANAGE_SAVINGS) {
+                // Tela CRUD da SavingsAccount. SavingsScreen (consumo) virá
+                // na Fase B; aqui é só "gerenciar > poupanças".
+                ManageSavingsScreen(
+                    onMenuClick = openDrawer,
+                )
+            }
         }
     }
 }
@@ -156,12 +164,13 @@ fun BillFolderNavHost(
  */
 private fun NavHostController.navigateFromDrawer(destination: DrawerDestination) {
     val route = when (destination) {
-        DrawerDestination.Home          -> Routes.HOME
-        DrawerDestination.DailyExpenses -> Routes.DAILY_EXPENSES
-        DrawerDestination.Expenses      -> Routes.EXPENSES
-        DrawerDestination.Income        -> Routes.INCOME
-        DrawerDestination.Cards         -> Routes.CARDS         // consumo
-        DrawerDestination.ManageCards   -> Routes.MANAGE_CARDS  // CRUD
+        DrawerDestination.Home           -> Routes.HOME
+        DrawerDestination.DailyExpenses  -> Routes.DAILY_EXPENSES
+        DrawerDestination.Expenses       -> Routes.EXPENSES
+        DrawerDestination.Income         -> Routes.INCOME
+        DrawerDestination.Cards          -> Routes.CARDS           // consumo
+        DrawerDestination.ManageCards    -> Routes.MANAGE_CARDS    // CRUD
+        DrawerDestination.ManageSavings  -> Routes.MANAGE_SAVINGS  // CRUD
         else -> return // ainda não temos tela; drawer já fechou no caller
     }
     navigate(route) {
@@ -184,6 +193,7 @@ private fun String?.toDrawerDestination(): DrawerDestination? = when (this) {
     Routes.INCOME          -> DrawerDestination.Income
     Routes.CARDS           -> DrawerDestination.Cards
     Routes.MANAGE_CARDS    -> DrawerDestination.ManageCards
+    Routes.MANAGE_SAVINGS  -> DrawerDestination.ManageSavings
     else                   -> null
 }
 

@@ -1,0 +1,199 @@
+package com.billfolder.android.ui.screens.managesavings
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.billfolder.android.data.dto.CheckingAccountResponse
+import com.billfolder.android.data.dto.CreateSavingsAccountRequest
+import com.billfolder.android.data.dto.SavingsAccountResponse
+import com.billfolder.android.data.dto.UpdateSavingsAccountRequest
+import com.billfolder.android.data.repository.ReferenceDataRepository
+import com.billfolder.android.data.repository.SavingsRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.IOException
+import javax.inject.Inject
+
+/**
+ * Form de "nova/editar conta poupança". Carrega checkings disponíveis pra
+ * popular o dropdown de vínculo (1:1 com checking).
+ *
+ * Modos:
+ *  - Create (editingId == null): POST. Dropdown de checking habilitado;
+ *    backend valida 1:1 e retorna 409 "checking_already_has_savings" se
+ *    a checking selecionada já tiver uma poupança — mensagem traduzida
+ *    pra português no submit().
+ *  - Edit (editingId != null): PATCH parcial. Dropdown de checking
+ *    DESABILITADO (vínculo é imutável no PATCH); só bankName/branch/
+ *    accountNumber/initialBalance são editáveis.
+ *
+ * Observação sobre initialBalance: o caller pode editar mesmo no modo
+ * edit. Backend trata isso como rebase do baseline pro cálculo de saldo
+ * — útil pra corrigir um valor digitado errado no momento do cadastro.
+ * Na Fase B, quando tivermos transações, podemos exibir um aviso de
+ * "essa edição vai recalcular o saldo atual" no momento do submit.
+ */
+data class AddSavingsAccountFormState(
+    val checkingAccountId: String? = null,
+    val bankName: String = "",
+    val branch: String = "",
+    val accountNumber: String = "",
+    val initialBalance: String = "",
+
+    val checkingAccounts: List<CheckingAccountResponse> = emptyList(),
+    val isLoadingReferences: Boolean = true,
+
+    val isSaving: Boolean = false,
+    val errorMessage: String? = null,
+    val savedSuccessfully: Boolean = false,
+
+    val editingId: String? = null,
+)
+
+@HiltViewModel
+class AddSavingsAccountViewModel @Inject constructor(
+    private val referenceDataRepository: ReferenceDataRepository,
+    private val savingsRepository: SavingsRepository,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(AddSavingsAccountFormState())
+    val state: StateFlow<AddSavingsAccountFormState> = _state.asStateFlow()
+
+    init {
+        loadCheckings()
+    }
+
+    fun onCheckingChange(id: String) = _state.update { it.copy(checkingAccountId = id) }
+    fun onBankNameChange(value: String) = _state.update { it.copy(bankName = value) }
+    fun onBranchChange(value: String) = _state.update { it.copy(branch = value) }
+    fun onAccountNumberChange(value: String) = _state.update { it.copy(accountNumber = value) }
+    fun onInitialBalanceChange(value: String) = _state.update { it.copy(initialBalance = value) }
+
+    /**
+     * Preenche o form com uma poupança existente — modo edit. Idempotente
+     * (checa editingId pra não resetar campos que o user já modificou
+     * num recompose acidental do sheet).
+     */
+    fun prefill(account: SavingsAccountResponse) {
+        if (_state.value.editingId == account.id) return
+        _state.update {
+            it.copy(
+                editingId = account.id,
+                checkingAccountId = account.checkingAccountId,
+                bankName = account.bankName,
+                branch = account.branch,
+                accountNumber = account.accountNumber,
+                initialBalance = account.initialBalance.toBrlInputString(),
+                errorMessage = null,
+            )
+        }
+    }
+
+    fun submit(
+        checkingEmptyMessage: String,
+        bankNameEmptyMessage: String,
+        branchEmptyMessage: String,
+        accountNumberEmptyMessage: String,
+        initialBalanceInvalidMessage: String,
+        duplicateCheckingMessage: String,
+    ) {
+        val current = _state.value
+        val balance = parseAmount(current.initialBalance)
+        val isEditing = current.editingId != null
+
+        val validationError = when {
+            // checking só é obrigatório/validado no modo create — em edit, é imutável
+            !isEditing && current.checkingAccountId.isNullOrBlank() -> checkingEmptyMessage
+            current.bankName.isBlank()                              -> bankNameEmptyMessage
+            current.branch.isBlank()                                -> branchEmptyMessage
+            current.accountNumber.isBlank()                         -> accountNumberEmptyMessage
+            balance == null || balance < 0                          -> initialBalanceInvalidMessage
+            else                                                    -> null
+        }
+        if (validationError != null) {
+            _state.update { it.copy(errorMessage = validationError) }
+            return
+        }
+
+        _state.update { it.copy(isSaving = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            try {
+                if (isEditing) {
+                    // PATCH parcial. Mandamos os campos editáveis pelo user;
+                    // checkingAccountId é deliberadamente omitido — backend
+                    // não permite alterar o vínculo via PATCH.
+                    val request = UpdateSavingsAccountRequest(
+                        bankName = current.bankName.trim(),
+                        branch = current.branch.trim(),
+                        accountNumber = current.accountNumber.trim(),
+                        initialBalance = balance,
+                    )
+                    savingsRepository.updateAccount(current.editingId!!, request)
+                } else {
+                    val request = CreateSavingsAccountRequest(
+                        checkingAccountId = current.checkingAccountId!!,
+                        bankName = current.bankName.trim(),
+                        branch = current.branch.trim(),
+                        accountNumber = current.accountNumber.trim(),
+                        initialBalance = balance!!,
+                    )
+                    savingsRepository.createAccount(request)
+                }
+                _state.update { it.copy(isSaving = false, savedSuccessfully = true) }
+            } catch (e: HttpException) {
+                // 409 → checking_already_has_savings (vínculo 1:1 violado).
+                // Não temos parser do body de erro do backend ainda; mensagem
+                // genérica por código pra UX previsível. Quando isso virar
+                // dor (mais codes traduzidos), centraliza num ApiErrorMapper.
+                val message = if (e.code() == 409) {
+                    duplicateCheckingMessage
+                } else {
+                    "Erro do servidor (HTTP ${e.code()})."
+                }
+                _state.update { it.copy(isSaving = false, errorMessage = message) }
+            } catch (e: IOException) {
+                _state.update { it.copy(isSaving = false, errorMessage = "Sem conexão. Tenta de novo.") }
+            } catch (e: Exception) {
+                _state.update { it.copy(isSaving = false, errorMessage = e.message ?: "Algo deu errado.") }
+            }
+        }
+    }
+
+    private fun loadCheckings() {
+        viewModelScope.launch {
+            try {
+                val checkings = referenceDataRepository.getCheckingAccounts()
+                _state.update {
+                    it.copy(
+                        checkingAccounts = checkings,
+                        isLoadingReferences = false,
+                        // Pré-seleciona a primary só em modo create. Em edit,
+                        // o prefill cuida de setar o checking original.
+                        checkingAccountId = it.checkingAccountId
+                            ?: checkings.firstOrNull { c -> c.isPrimary }?.id
+                            ?: checkings.firstOrNull()?.id,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoadingReferences = false,
+                        errorMessage = "Falha ao carregar contas correntes.",
+                    )
+                }
+            }
+        }
+    }
+
+    private fun parseAmount(input: String): Double? =
+        input.replace(',', '.').toDoubleOrNull()
+
+    /** "1234.5" → "1234,50" pra preencher o MoneyField em modo edit. */
+    private fun Double.toBrlInputString(): String =
+        "%.2f".format(this).replace('.', ',')
+}

@@ -23,4 +23,5 @@ object Routes {
     fun cardsWithSelected(cardId: String) = "cards?cardId=$cardId"
 
     const val MANAGE_CARDS    = "manage-cards"
+    const val MANAGE_SAVINGS  = "manage-savings"
 }
