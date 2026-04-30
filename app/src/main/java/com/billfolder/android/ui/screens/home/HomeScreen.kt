@@ -50,6 +50,7 @@ import com.billfolder.android.ui.screens.dailyexpenses.AddDailyExpenseSheet
 import com.billfolder.android.ui.screens.expenses.AddExpenseSheet
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.screens.income.AddIncomeEntrySheet
+import com.billfolder.android.ui.screens.savings.AddSavingsTransactionSheet
 import com.billfolder.android.ui.screens.home.components.HomeHeroCard
 import com.billfolder.android.ui.screens.home.components.HomeListRow
 import com.billfolder.android.ui.screens.home.components.WhereMoneyGoingCard
@@ -74,13 +75,16 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    // Sheets disparados pelo Speed Dial. Quando virarem 5 (income, card,
-    // savings também), refatora pra sealed class "qual sheet abrir"
-    // controlada por uma única var, evitando proliferação de booleans.
+    // Sheets disparados pelo Speed Dial. Agora são 5 (avulsa, despesa,
+    // recebimento, cartão, poupança). Mantemos um boolean por sheet por
+    // simplicidade — só um aparece por vez na prática (Speed Dial fecha
+    // antes de abrir a sheet). Quando crescer pra 7+ ou virar dor real,
+    // refatora pra `sealed interface ActiveSheet` controlado por uma var.
     var showAddDailySheet by remember { mutableStateOf(false) }
     var showAddExpenseSheet by remember { mutableStateOf(false) }
     var showAddIncomeSheet by remember { mutableStateOf(false) }
     var showAddCardSheet by remember { mutableStateOf(false) }
+    var showAddSavingsTransactionSheet by remember { mutableStateOf(false) }
 
     HomeScaffold(
         state = state,
@@ -91,6 +95,7 @@ fun HomeScreen(
         onSpeedDialExpense = { showAddExpenseSheet = true },
         onSpeedDialIncome = { showAddIncomeSheet = true },
         onSpeedDialCard = { showAddCardSheet = true },
+        onSpeedDialSavings = { showAddSavingsTransactionSheet = true },
     )
 
     // Sheets renderizados fora do drawer pra ficar em cima de tudo.
@@ -118,6 +123,18 @@ fun HomeScreen(
             onSaved = { viewModel.refresh() },
         )
     }
+    if (showAddSavingsTransactionSheet) {
+        // Sem preferredAccountId aqui — Home não tem contexto de "qual
+        // poupança o user tava olhando", então o sheet pré-seleciona a
+        // primeira da lista (default do VM). Se o user não tem nenhuma
+        // poupança cadastrada, o submit cai em validation "escolha uma
+        // poupança" — mesma convenção do AddCardEntrySheet quando o user
+        // não tem cartão.
+        AddSavingsTransactionSheet(
+            onDismiss = { showAddSavingsTransactionSheet = false },
+            onSaved = { viewModel.refresh() },
+        )
+    }
 }
 
 @Composable
@@ -130,6 +147,7 @@ private fun HomeScaffold(
     onSpeedDialExpense: () -> Unit,
     onSpeedDialIncome: () -> Unit,
     onSpeedDialCard: () -> Unit,
+    onSpeedDialSavings: () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -169,6 +187,7 @@ private fun HomeScaffold(
                     onExpense = onSpeedDialExpense,
                     onIncome = onSpeedDialIncome,
                     onCard = onSpeedDialCard,
+                    onSavings = onSpeedDialSavings,
                 ),
             )
         }
@@ -181,6 +200,7 @@ private fun rememberSpeedDialItems(
     onExpense: () -> Unit,
     onIncome: () -> Unit,
     onCard: () -> Unit,
+    onSavings: () -> Unit,
 ): List<SpeedDialItem> {
     val daily   = stringResource(R.string.speed_dial_daily)
     val income  = stringResource(R.string.speed_dial_income)
@@ -196,7 +216,7 @@ private fun rememberSpeedDialItems(
         SpeedDialItem(
             label = savings,
             icon = Icons.Default.Savings,
-            onClick = { /* TODO sheet de savings transaction */ },
+            onClick = onSavings,
         ),
         SpeedDialItem(
             label = income,
