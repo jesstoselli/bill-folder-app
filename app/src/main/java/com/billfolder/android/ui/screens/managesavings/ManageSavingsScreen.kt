@@ -54,13 +54,16 @@ import com.billfolder.android.ui.theme.PillShape
  * SavingsAccount com swipe-left pra deletar, swipe-right pra editar,
  * FAB pra criar.
  *
- * Tap na linha está reservado pra abrir SavingsScreen (consumo) — virá
- * na Fase B junto com a tela de consumo. Por ora, sem onClick.
+ * Tap na linha abre a SavingsScreen (consumo) com aquela poupança já
+ * pré-selecionada no carousel — atalho "deep link" via
+ * Routes.savingsWithSelected(id), igual o tap em ManageCardsRow leva
+ * pra CardsScreen com o cartão selecionado.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageSavingsScreen(
     onMenuClick: () -> Unit,
+    onNavigateToTransactions: (savingsAccountId: String) -> Unit,
     viewModel: ManageSavingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -122,6 +125,7 @@ fun ManageSavingsScreen(
                     onAddAccount = { showAddSheet = true },
                     onRequestDelete = viewModel::requestDelete,
                     onRequestEdit = viewModel::requestEdit,
+                    onAccountClick = onNavigateToTransactions,
                 )
             }
         }
@@ -168,6 +172,7 @@ private fun Content(
     onAddAccount: () -> Unit,
     onRequestDelete: (SavingsAccountResponse) -> Unit,
     onRequestEdit: (SavingsAccountResponse) -> Unit,
+    onAccountClick: (savingsAccountId: String) -> Unit,
 ) {
     if (state.accounts.isEmpty()) {
         EmptyListState(onAddAccount = onAddAccount)
@@ -186,7 +191,12 @@ private fun Content(
                 onDelete = { onRequestDelete(account) },
                 onEdit = { onRequestEdit(account) },
             ) {
-                SavingsAccountRow(account = account)
+                SavingsAccountRow(
+                    account = account,
+                    // Tap na row → SavingsScreen com aquela poupança
+                    // selecionada (deep link via NavHost).
+                    onClick = { onAccountClick(account.id) },
+                )
             }
         }
         item { Spacer(Modifier.height(80.dp)) }

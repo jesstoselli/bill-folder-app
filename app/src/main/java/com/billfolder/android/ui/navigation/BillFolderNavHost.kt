@@ -24,6 +24,7 @@ import com.billfolder.android.ui.screens.home.HomeScreen
 import com.billfolder.android.ui.screens.income.IncomeScreen
 import com.billfolder.android.ui.screens.managecards.ManageCardsScreen
 import com.billfolder.android.ui.screens.managesavings.ManageSavingsScreen
+import com.billfolder.android.ui.screens.savings.SavingsScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -147,9 +148,31 @@ fun BillFolderNavHost(
                 )
             }
             composable(Routes.MANAGE_SAVINGS) {
-                // Tela CRUD da SavingsAccount. SavingsScreen (consumo) virá
-                // na Fase B; aqui é só "gerenciar > poupanças".
                 ManageSavingsScreen(
+                    onMenuClick = openDrawer,
+                    onNavigateToTransactions = { savingsAccountId ->
+                        navController.navigate(Routes.savingsWithSelected(savingsAccountId)) {
+                            // Mesmo padrão do Cards: pop até Home pra back
+                            // voltar pra Home (e não pra ManageSavings).
+                            // Sem saveState/restoreState aqui — queremos VM
+                            // recriado lendo o arg via SavedStateHandle.
+                            popUpTo(Routes.HOME)
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+            composable(
+                route = Routes.SAVINGS_PATTERN,
+                arguments = listOf(
+                    navArgument(Routes.SAVINGS_ARG_ID) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) {
+                SavingsScreen(
                     onMenuClick = openDrawer,
                 )
             }
@@ -169,6 +192,7 @@ private fun NavHostController.navigateFromDrawer(destination: DrawerDestination)
         DrawerDestination.Expenses       -> Routes.EXPENSES
         DrawerDestination.Income         -> Routes.INCOME
         DrawerDestination.Cards          -> Routes.CARDS           // consumo
+        DrawerDestination.Savings        -> Routes.SAVINGS         // consumo
         DrawerDestination.ManageCards    -> Routes.MANAGE_CARDS    // CRUD
         DrawerDestination.ManageSavings  -> Routes.MANAGE_SAVINGS  // CRUD
         else -> return // ainda não temos tela; drawer já fechou no caller
@@ -192,6 +216,7 @@ private fun String?.toDrawerDestination(): DrawerDestination? = when (this) {
     Routes.EXPENSES        -> DrawerDestination.Expenses
     Routes.INCOME          -> DrawerDestination.Income
     Routes.CARDS           -> DrawerDestination.Cards
+    Routes.SAVINGS         -> DrawerDestination.Savings
     Routes.MANAGE_CARDS    -> DrawerDestination.ManageCards
     Routes.MANAGE_SAVINGS  -> DrawerDestination.ManageSavings
     else                   -> null

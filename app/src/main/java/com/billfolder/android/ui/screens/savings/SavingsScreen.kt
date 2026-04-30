@@ -162,15 +162,17 @@ fun SavingsScreen(
             }
         }
 
-        // Sheet de criar/editar movimentação chega no Passo 4 (e plug aqui).
-        // Por enquanto, só fechamos o flag pra não deixar a UI presa caso o
-        // FAB seja tocado — o sheet em si será adicionado quando ele existir.
-        if (showAddTransactionSheet) {
-            // TODO Passo 4: AddSavingsTransactionSheet(
-            //     onDismiss = { showAddTransactionSheet = false },
-            //     onSaved = { viewModel.refresh() },
-            // )
-            showAddTransactionSheet = false
+        // FAB → AddSavingsTransactionSheet em modo create. Pré-seleciona a
+        // poupança que tá no carousel agora (preferredAccountId), pra
+        // evitar atrito com a expectativa do usuário ("estou vendo a
+        // poupança X, vou registrar nela").
+        val current = state
+        if (showAddTransactionSheet && current is SavingsUiState.Content) {
+            AddSavingsTransactionSheet(
+                onDismiss = { showAddTransactionSheet = false },
+                onSaved = { viewModel.refresh() },
+                preferredAccountId = current.selectedAccountId,
+            )
         }
 
         // "+ nova" do carousel abre o AddSavingsAccountSheet em modo create.
@@ -183,14 +185,24 @@ fun SavingsScreen(
             )
         }
 
-        // TODO Passo 4: sheet de editar movimentação (modo edit) reutilizando
-        // AddSavingsTransactionSheet com `existing`.
+        // Sheet de editar movimentação (modo edit). Reusa
+        // AddSavingsTransactionSheet com `existing`. PATCH não toca em
+        // savingsAccountId; tipo fica disabled se a tx for Transfer*.
+        if (current is SavingsUiState.Content && current.editing != null) {
+            AddSavingsTransactionSheet(
+                existing = current.editing,
+                onDismiss = viewModel::cancelEdit,
+                onSaved = {
+                    viewModel.cancelEdit()
+                    viewModel.refresh()
+                },
+            )
+        }
 
         // Dialog de confirmação de delete da movimentação — atrelado ao
         // pendingDelete do VM. Title genérico (não usamos label da tx no
         // título porque label é opcional; a mensagem cita o tipo de
         // movimentação pra dar contexto).
-        val current = state
         if (current is SavingsUiState.Content && current.pendingDelete != null) {
             DeleteTransactionDialog(
                 onConfirm = viewModel::confirmDelete,

@@ -310,6 +310,21 @@
     <string name="savings_transaction_delete_dialog_title">deletar movimentação?</string>
     <string name="savings_transaction_delete_dialog_message">isso vai apagar essa movimentação permanentemente. essa ação não pode ser desfeita.</string>
 
+    <!-- Add / Edit Savings Transaction (sheet) -->
+    <string name="add_savings_tx_title">nova movimentação</string>
+    <string name="add_savings_tx_title_edit">editar movimentação</string>
+    <string name="add_savings_tx_field_account">poupança</string>
+    <string name="add_savings_tx_field_type">tipo</string>
+    <string name="add_savings_tx_field_date">data</string>
+    <string name="add_savings_tx_field_amount">valor</string>
+    <string name="add_savings_tx_field_label">descrição (opcional)</string>
+    <string name="add_savings_tx_validation_account_empty">Escolha uma poupança.</string>
+    <string name="add_savings_tx_validation_amount">Valor precisa ser zero ou positivo.</string>
+    <!-- Aviso em modo edit, abaixo do dropdown de poupança desabilitado -->
+    <string name="add_savings_tx_edit_account_hint">a poupança vinculada à movimentação não pode ser alterada. pra mudar, deleta e cria de novo.</string>
+    <!-- Aviso em modo edit quando a tx é uma transferência (tipo bloqueado) -->
+    <string name="add_savings_tx_edit_transfer_hint">transferências entre poupanças não podem ter o tipo alterado por aqui. demais campos seguem editáveis.</string>
+
     <!-- Manage Savings (gerenciar > poupanças) -->
     <string name="manage_savings_screen_title">poupanças</string>
     <string name="manage_savings_empty_title">você ainda não tem poupanças cadastradas.</string>
