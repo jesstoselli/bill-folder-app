@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,6 +7,25 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
+
+// ----------------------------------------------------------------------------
+// Override do API_BASE_URL via local.properties (gitignored).
+//
+// Permite alternar entre emulador / device + backend local na LAN /
+// device + backend remoto sem editar arquivo versionado. Adicionar no
+// local.properties (mesmo arquivo onde mora o sdk.dir):
+//
+//   api.base.url=http://192.168.2.123:5077/v1/   # device + Mac local na LAN
+//   api.base.url=https://api.billfolder.app/v1/  # device + remoto (debug)
+//
+// Sem a property, cada buildType cai no default conservador:
+//   debug   → http://10.0.2.2:5077/v1/   (alias do emulador pro localhost)
+//   release → https://api.billfolder.app/v1/
+// ----------------------------------------------------------------------------
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val apiBaseUrlOverride: String? = localProps.getProperty("api.base.url")?.takeIf { it.isNotBlank() }
 
 android {
     namespace = "com.billfolder.android"
@@ -26,14 +47,19 @@ android {
 
     buildTypes {
         debug {
-            // Aponta pro Kestrel local (do .NET) — emulador acessa o host
-            // pelo alias 10.0.2.2 (não localhost, que é o próprio emulador).
-//            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5077/v1/\"")
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.2.109:5077/v1/\"")
+            // Default: alias do emulador Android pro localhost da host machine.
+            // Em device físico OU pra apontar pro remoto, sobrescreve via
+            // `api.base.url=...` em local.properties (ver comentário no topo
+            // do arquivo). Sem o override, vai pro emulador.
+            val debugUrl = apiBaseUrlOverride ?: "http://10.0.2.2:5077/v1/"
+            buildConfigField("String", "API_BASE_URL", "\"$debugUrl\"")
             isMinifyEnabled = false
         }
         release {
-            buildConfigField("String", "API_BASE_URL", "\"https://api.billfolder.app/v1/\"")
+            // Default: produção. Override raramente é útil aqui (caso de
+            // querer testar uma release build minificada contra staging).
+            val releaseUrl = apiBaseUrlOverride ?: "https://api.billfolder.app/v1/"
+            buildConfigField("String", "API_BASE_URL", "\"$releaseUrl\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

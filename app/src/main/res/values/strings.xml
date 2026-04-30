@@ -86,7 +86,17 @@
 
     <!-- Empty / error states -->
     <string name="home_no_cycle_title">você ainda não tem um ciclo aberto.</string>
-    <string name="home_no_cycle_subtitle">a criação de ciclos chega na próxima etapa do app.</string>
+    <string name="home_no_cycle_subtitle">crie seu primeiro ciclo pra começar a registrar suas finanças. um ciclo é um intervalo de datas — geralmente mensal — usado pra agrupar despesas, recebimentos e movimentações.</string>
+    <string name="home_no_cycle_cta">criar primeiro ciclo</string>
+
+    <!-- Create Cycle (sheet) -->
+    <string name="create_cycle_title">criar ciclo</string>
+    <string name="create_cycle_field_label">nome (ex: abril/2026)</string>
+    <string name="create_cycle_field_start_date">início</string>
+    <string name="create_cycle_field_end_date">fim</string>
+    <string name="create_cycle_validation_label">Informe um nome pro ciclo.</string>
+    <string name="create_cycle_validation_dates">Data de início deve ser anterior à de fim.</string>
+    <string name="create_cycle_error_duplicate_start">Já existe um ciclo começando nessa data.</string>
 
     <!-- Status chips -->
     <string name="status_paid">pago</string>

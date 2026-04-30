@@ -45,7 +45,9 @@ import com.billfolder.android.data.dto.HomeUpcomingExpenseDto
 import com.billfolder.android.ui.components.BillFolderSpeedDialFab
 import com.billfolder.android.ui.components.BillFolderTopBar
 import com.billfolder.android.ui.components.SpeedDialItem
+import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.screens.cards.AddCardEntrySheet
+import com.billfolder.android.ui.screens.cycles.CreateCycleSheet
 import com.billfolder.android.ui.screens.dailyexpenses.AddDailyExpenseSheet
 import com.billfolder.android.ui.screens.expenses.AddExpenseSheet
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
@@ -85,6 +87,7 @@ fun HomeScreen(
     var showAddIncomeSheet by remember { mutableStateOf(false) }
     var showAddCardSheet by remember { mutableStateOf(false) }
     var showAddSavingsTransactionSheet by remember { mutableStateOf(false) }
+    var showCreateCycleSheet by remember { mutableStateOf(false) }
 
     // Atalho de poupança no Speed Dial só é habilitado quando o user
     // tem ao menos uma SavingsAccount cadastrada. Em estados pré-Content
@@ -97,6 +100,7 @@ fun HomeScreen(
         onMenuClick = onMenuClick,
         onAvatarClick = { viewModel.logout(onDone = onLogout) },
         onRefresh = viewModel::refresh,
+        onCreateCycle = { showCreateCycleSheet = true },
         onSpeedDialDaily = { showAddDailySheet = true },
         onSpeedDialExpense = { showAddExpenseSheet = true },
         onSpeedDialIncome = { showAddIncomeSheet = true },
@@ -130,6 +134,12 @@ fun HomeScreen(
             onSaved = { viewModel.refresh() },
         )
     }
+    if (showCreateCycleSheet) {
+        CreateCycleSheet(
+            onDismiss = { showCreateCycleSheet = false },
+            onSaved = { viewModel.refresh() },
+        )
+    }
     if (showAddSavingsTransactionSheet) {
         // Sem preferredAccountId aqui — Home não tem contexto de "qual
         // poupança o user tava olhando", então o sheet pré-seleciona a
@@ -150,6 +160,7 @@ private fun HomeScaffold(
     onMenuClick: () -> Unit,
     onAvatarClick: () -> Unit,
     onRefresh: () -> Unit,
+    onCreateCycle: () -> Unit,
     onSpeedDialDaily: () -> Unit,
     onSpeedDialExpense: () -> Unit,
     onSpeedDialIncome: () -> Unit,
@@ -175,7 +186,7 @@ private fun HomeScaffold(
         ) {
             when (val s = state) {
                 HomeUiState.Loading  -> CenteredLoading()
-                HomeUiState.NoCycle  -> NoCycleEmptyState()
+                HomeUiState.NoCycle  -> NoCycleEmptyState(onCreateCycle = onCreateCycle)
                 is HomeUiState.Error -> ErrorState(
                     message = s.message,
                     onRetry = onRefresh,
@@ -440,7 +451,7 @@ private fun ErrorState(
 }
 
 @Composable
-private fun NoCycleEmptyState() {
+private fun NoCycleEmptyState(onCreateCycle: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -460,6 +471,11 @@ private fun NoCycleEmptyState() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(24.dp))
+            BillFolderPrimaryButton(
+                text = stringResource(R.string.home_no_cycle_cta),
+                onClick = onCreateCycle,
             )
         }
     }

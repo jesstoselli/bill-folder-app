@@ -8,6 +8,7 @@ import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreateDailyExpenseRequest
 import com.billfolder.android.data.dto.CreateExpenseRequest
+import com.billfolder.android.data.dto.CreateCycleRequest
 import com.billfolder.android.data.dto.CreateIncomeEntryRequest
 import com.billfolder.android.data.dto.CreateIncomeSourceRequest
 import com.billfolder.android.data.dto.CreateSavingsAccountRequest
@@ -98,6 +99,14 @@ interface BillFolderApi {
      */
     @GET("cycles/current")
     suspend fun getCurrentCycle(): CycleResponse
+
+    /**
+     * Cria um novo ciclo. 409 "duplicate_start_date" se já houver um ciclo
+     * do user começando na mesma data (cycles não podem se sobrepor por
+     * startDate). Sheet de criar ciclo intercepta e mostra mensagem em PT.
+     */
+    @POST("cycles")
+    suspend fun createCycle(@Body request: CreateCycleRequest): CycleResponse
 
     // ------------------------------------------------------------------------
     // Daily expenses (despesas avulsas do dia-a-dia)
