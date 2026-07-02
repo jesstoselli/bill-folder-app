@@ -6,6 +6,8 @@ import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.DailyExpensesRepository
+import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +43,10 @@ sealed interface DailyExpensesUiState {
         val pendingDelete: DailyExpenseResponse? = null,
         val editing: DailyExpenseResponse? = null,
         val deletingId: String? = null,
+        /** Lista completa de ciclos, pra resolver prev/next client-side. */
+        val cycles: List<CycleResponse> = emptyList(),
+        /** true durante refetch do ciclo prev/next — bloqueia tap-spam. */
+        val isSwitchingCycle: Boolean = false,
     ) : DailyExpensesUiState
     data class Error(val message: String) : DailyExpensesUiState
 }
@@ -158,6 +164,46 @@ class DailyExpensesViewModel @Inject constructor(
         }
     }
 
+    // ------------------------------------------------------------------------
+    // Cycle navigation (setinhas do CycleNavigator)
+    // ------------------------------------------------------------------------
+
+    fun goToPreviousCycle() = navigate(CycleDirection.PREVIOUS)
+    fun goToNextCycle()     = navigate(CycleDirection.NEXT)
+
+    private fun navigate(direction: CycleDirection) {
+        val current = _state.value as? DailyExpensesUiState.Content ?: return
+        if (current.isSwitchingCycle) return
+        val target = resolveAdjacentCycle(current.cycles, current.cycle.id, direction)
+            ?: return
+
+        _state.update {
+            (it as? DailyExpensesUiState.Content)?.copy(isSwitchingCycle = true) ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                val expenses = dailyExpensesRepository.list(
+                    from = target.startDate,
+                    to = target.endDate,
+                )
+                _state.update { s ->
+                    (s as? DailyExpensesUiState.Content)?.copy(
+                        cycle = target,
+                        expenses = expenses.sortedByDescending { it.date },
+                        isSwitchingCycle = false,
+                        pendingDelete = null,
+                        editing = null,
+                    ) ?: s
+                }
+            } catch (e: Exception) {
+                _state.update { s ->
+                    (s as? DailyExpensesUiState.Content)?.copy(isSwitchingCycle = false) ?: s
+                }
+            }
+        }
+    }
+
     private fun load() {
         viewModelScope.launch {
             _state.value = try {
@@ -166,10 +212,14 @@ class DailyExpensesViewModel @Inject constructor(
                     from = cycle.startDate,
                     to = cycle.endDate,
                 )
+                // Lista de ciclos best-effort — falha aqui não derruba a tela,
+                // só deixa setinhas do CycleNavigator inoperantes.
+                val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
                 // Backend já ordena, mas garantimos: mais recentes primeiro.
                 DailyExpensesUiState.Content(
                     cycle = cycle,
                     expenses = expenses.sortedByDescending { it.date },
+                    cycles = cycles,
                 )
             } catch (e: HttpException) {
                 if (e.code() == HTTP_NOT_FOUND) {

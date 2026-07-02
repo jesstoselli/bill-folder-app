@@ -6,6 +6,8 @@ import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.ExpensesRepository
+import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +45,8 @@ sealed interface ExpensesUiState {
         val pendingDelete: ExpenseResponse? = null,
         val editing: ExpenseResponse? = null,
         val deletingId: String? = null,
+        val cycles: List<CycleResponse> = emptyList(),
+        val isSwitchingCycle: Boolean = false,
     ) : ExpensesUiState
     data class Error(val message: String) : ExpensesUiState
 }
@@ -148,6 +152,46 @@ class ExpensesViewModel @Inject constructor(
         }
     }
 
+    // ------------------------------------------------------------------------
+    // Cycle navigation (setinhas do CycleNavigator)
+    // ------------------------------------------------------------------------
+
+    fun goToPreviousCycle() = navigate(CycleDirection.PREVIOUS)
+    fun goToNextCycle()     = navigate(CycleDirection.NEXT)
+
+    private fun navigate(direction: CycleDirection) {
+        val current = _state.value as? ExpensesUiState.Content ?: return
+        if (current.isSwitchingCycle) return
+        val target = resolveAdjacentCycle(current.cycles, current.cycle.id, direction)
+            ?: return
+
+        _state.update {
+            (it as? ExpensesUiState.Content)?.copy(isSwitchingCycle = true) ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                val expenses = expensesRepository.list(
+                    from = target.startDate,
+                    to = target.endDate,
+                )
+                _state.update { s ->
+                    (s as? ExpensesUiState.Content)?.copy(
+                        cycle = target,
+                        expenses = expenses.sortedBy { it.dueDate },
+                        isSwitchingCycle = false,
+                        pendingDelete = null,
+                        editing = null,
+                    ) ?: s
+                }
+            } catch (e: Exception) {
+                _state.update { s ->
+                    (s as? ExpensesUiState.Content)?.copy(isSwitchingCycle = false) ?: s
+                }
+            }
+        }
+    }
+
     private fun load() {
         viewModelScope.launch {
             _state.value = try {
@@ -156,6 +200,7 @@ class ExpensesViewModel @Inject constructor(
                     from = cycle.startDate,
                     to = cycle.endDate,
                 )
+                val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
                 ExpensesUiState.Content(
                     cycle = cycle,
                     // Ordenação: overdue/pending por dueDate ascendente (o que
@@ -163,6 +208,7 @@ class ExpensesViewModel @Inject constructor(
                     // (mais recentes primeiro). Mantemos lista plana e separa
                     // por seção na UI.
                     expenses = expenses.sortedBy { it.dueDate },
+                    cycles = cycles,
                 )
             } catch (e: HttpException) {
                 if (e.code() == HTTP_NOT_FOUND) {

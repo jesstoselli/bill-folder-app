@@ -10,6 +10,8 @@ import com.billfolder.android.data.dto.SavingsTransactionTypes
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.SavingsRepository
 import com.billfolder.android.ui.navigation.Routes
+import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -72,6 +74,8 @@ sealed interface SavingsUiState {
         val pendingDelete: SavingsTransactionResponse? = null,
         val editing: SavingsTransactionResponse? = null,
         val deletingId: String? = null,
+        val cycles: List<CycleResponse> = emptyList(),
+        val isSwitchingCycle: Boolean = false,
     ) : SavingsUiState
     data class Error(val message: String) : SavingsUiState
 }
@@ -209,6 +213,52 @@ class SavingsViewModel @Inject constructor(
         }
     }
 
+    // ------------------------------------------------------------------------
+    // Cycle navigation (setinhas do CycleNavigator)
+    //
+    // Aqui o filtro é backend-side (listTransactions com from/to), então
+    // trocar de ciclo dispara refetch da lista de transações. Accounts é
+    // config estável do user, não janelada.
+    // ------------------------------------------------------------------------
+
+    fun goToPreviousCycle() = navigate(CycleDirection.PREVIOUS)
+    fun goToNextCycle()     = navigate(CycleDirection.NEXT)
+
+    private fun navigate(direction: CycleDirection) {
+        val current = _state.value as? SavingsUiState.Content ?: return
+        if (current.isSwitchingCycle) return
+        val target = resolveAdjacentCycle(current.cycles, current.cycle.id, direction)
+            ?: return
+
+        _state.update {
+            (it as? SavingsUiState.Content)?.copy(isSwitchingCycle = true) ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                val transactions = savingsRepository.listTransactions(
+                    savingsAccountId = null,
+                    from = target.startDate,
+                    to = target.endDate,
+                    type = null,
+                )
+                _state.update { s ->
+                    (s as? SavingsUiState.Content)?.copy(
+                        cycle = target,
+                        allTransactions = transactions,
+                        isSwitchingCycle = false,
+                        pendingDelete = null,
+                        editing = null,
+                    ) ?: s
+                }
+            } catch (e: Exception) {
+                _state.update { s ->
+                    (s as? SavingsUiState.Content)?.copy(isSwitchingCycle = false) ?: s
+                }
+            }
+        }
+    }
+
     private fun load() {
         viewModelScope.launch {
             _state.value = try {
@@ -245,11 +295,13 @@ class SavingsViewModel @Inject constructor(
                         .firstOrNull { it.id == initialAccountId }
                         ?.id
                         ?: accounts.first().id
+                    val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
                     SavingsUiState.Content(
                         cycle = cycle,
                         accounts = accounts,
                         allTransactions = transactions,
                         selectedAccountId = initialSelected,
+                        cycles = cycles,
                     )
                 }
             } catch (e: HttpException) {

@@ -14,6 +14,16 @@ class CyclesRepository @Inject constructor(
     suspend fun getCurrent(): CycleResponse = api.getCurrentCycle()
 
     /**
+     * Lista todos os ciclos do user, ordenados por startDate asc pelo
+     * backend. Usado pela navegação prev/next — precisamos da lista
+     * completa pra resolver "qual é o ciclo antes/depois deste ID?".
+     * from/to opcionais permitem limitar a janela se algum dia virar
+     * paginação (por enquanto o backend devolve tudo).
+     */
+    suspend fun list(from: String? = null, to: String? = null): List<CycleResponse> =
+        api.listCycles(from, to)
+
+    /**
      * Cria um novo ciclo. Pode lançar HttpException(409) se já houver
      * um ciclo do user com a mesma startDate — caller deve traduzir
      * pra mensagem em PT (convenção: "Já existe um ciclo começando

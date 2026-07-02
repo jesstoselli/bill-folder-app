@@ -109,6 +109,8 @@ fun HomeScreen(
         onSpeedDialIncome = { showAddIncomeSheet = true },
         onSpeedDialCard = { showAddCardSheet = true },
         onSpeedDialSavings = { showAddSavingsTransactionSheet = true },
+        onPreviousCycle = viewModel::goToPreviousCycle,
+        onNextCycle = viewModel::goToNextCycle,
         savingsShortcutEnabled = savingsShortcutEnabled,
     )
 
@@ -207,6 +209,8 @@ private fun HomeScaffold(
     onSpeedDialIncome: () -> Unit,
     onSpeedDialCard: () -> Unit,
     onSpeedDialSavings: () -> Unit,
+    onPreviousCycle: () -> Unit,
+    onNextCycle: () -> Unit,
     savingsShortcutEnabled: Boolean,
 ) {
     Scaffold(
@@ -234,13 +238,11 @@ private fun HomeScaffold(
                 )
                 is HomeUiState.Content -> HomeContent(
                     data = s.data,
-                    onPreviousCycle = { /* TODO */ },
-                    onNextCycle = { /* TODO */ },
+                    onPreviousCycle = onPreviousCycle,
+                    onNextCycle = onNextCycle,
                 )
             }
 
-            // Speed Dial — fica em cima de tudo. Quando fechado, mostra só
-            // o FAB pílula. Quando aberto, scrim cobre o conteúdo.
             BillFolderSpeedDialFab(
                 items = rememberSpeedDialItems(
                     onDaily = onSpeedDialDaily,

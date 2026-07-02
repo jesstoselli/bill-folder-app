@@ -98,8 +98,13 @@ interface BillFolderApi {
     // Home (dashboard agregado)
     // ------------------------------------------------------------------------
 
+    /**
+     * Snapshot do dashboard. Sem cycleId, o backend usa o ciclo atual.
+     * Com cycleId, o backend usa aquele ciclo específico — usado pela
+     * navegação prev/next de ciclos no CycleNavigator da Home.
+     */
     @GET("home")
-    suspend fun getHome(): HomeResponse
+    suspend fun getHome(@Query("cycleId") cycleId: String? = null): HomeResponse
 
     // ------------------------------------------------------------------------
     // Reference data — populam dropdowns de formulários
@@ -145,6 +150,17 @@ interface BillFolderApi {
      */
     @GET("cycles/current")
     suspend fun getCurrentCycle(): CycleResponse
+
+    /**
+     * Lista ciclos do usuário. Sem from/to, retorna todos. Backend ordena
+     * por startDate asc. Usado pela navegação prev/next de ciclos —
+     * carregamos a lista completa e escolhemos o adjacente client-side.
+     */
+    @GET("cycles")
+    suspend fun listCycles(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+    ): List<CycleResponse>
 
     /**
      * Cria um novo ciclo. 409 "duplicate_start_date" se já houver um ciclo

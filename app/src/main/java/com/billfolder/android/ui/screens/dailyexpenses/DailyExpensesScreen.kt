@@ -126,6 +126,8 @@ fun DailyExpensesScreen(
                     onAddExpense = { showAddSheet = true },
                     onRequestDelete = viewModel::requestDelete,
                     onRequestEdit = viewModel::requestEdit,
+                    onPreviousCycle = viewModel::goToPreviousCycle,
+                    onNextCycle = viewModel::goToNextCycle,
                 )
             }
         }
@@ -170,6 +172,8 @@ private fun DailyExpensesContent(
     onAddExpense: () -> Unit,
     onRequestDelete: (DailyExpenseResponse) -> Unit,
     onRequestEdit: (DailyExpenseResponse) -> Unit,
+    onPreviousCycle: () -> Unit,
+    onNextCycle: () -> Unit,
 ) {
     val expenses = state.expenses
     val total = expenses.sumOf { it.amount }
@@ -187,8 +191,8 @@ private fun DailyExpensesContent(
                 cycleLabel = state.cycle.label,
                 startIso = state.cycle.startDate,
                 endIso = state.cycle.endDate,
-                onPrevious = { /* TODO navegação de ciclo */ },
-                onNext = { /* TODO */ },
+                onPrevious = onPreviousCycle,
+                onNext = onNextCycle,
             )
         }
 

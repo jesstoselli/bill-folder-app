@@ -2,14 +2,19 @@ package com.billfolder.android.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.repository.AuthRepository
+import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.HomeRepository
 import com.billfolder.android.data.repository.SavingsRepository
+import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
@@ -34,6 +39,19 @@ sealed interface HomeUiState {
     data class Content(
         val data: HomeResponse,
         val hasAnySavingsAccount: Boolean,
+        /**
+         * Lista completa de ciclos do user, usada pra resolver prev/next
+         * client-side no CycleNavigator. Vem ordenada por startDate asc.
+         * Se falha ao carregar (rede etc), fica vazia — setinhas ficam
+         * sem efeito, mas a Home renderiza o ciclo atual normalmente.
+         */
+        val cycles: List<CycleResponse> = emptyList(),
+        /**
+         * true enquanto refetch de ciclo diferente estiver rolando. UI
+         * pode usar pra desabilitar as setinhas e evitar tap-spam. Não
+         * troco pro HomeUiState.Loading porque isso apaga a tela inteira.
+         */
+        val isSwitchingCycle: Boolean = false,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
     /** Ciclo ainda não criado pelo usuário — backend retorna 404/erro específico. */
@@ -45,6 +63,7 @@ class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val authRepository: AuthRepository,
     private val savingsRepository: SavingsRepository,
+    private val cyclesRepository: CyclesRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -67,6 +86,44 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Setinhas do CycleNavigator. Nada acontece se já estamos no extremo
+     * (primeiro/último ciclo do user) ou se ainda não temos a lista de
+     * ciclos carregada. Ignoramos taps enquanto isSwitchingCycle = true.
+     */
+    fun goToPreviousCycle() = navigate(CycleDirection.PREVIOUS)
+    fun goToNextCycle()     = navigate(CycleDirection.NEXT)
+
+    private fun navigate(direction: CycleDirection) {
+        val current = _state.value as? HomeUiState.Content ?: return
+        if (current.isSwitchingCycle) return
+        val target = resolveAdjacentCycle(current.cycles, current.data.cycle.id, direction)
+            ?: return
+
+        _state.update {
+            (it as? HomeUiState.Content)?.copy(isSwitchingCycle = true) ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                val home = homeRepository.getHome(cycleId = target.id)
+                _state.update { s ->
+                    (s as? HomeUiState.Content)?.copy(
+                        data = home,
+                        isSwitchingCycle = false,
+                    ) ?: s
+                }
+            } catch (e: Exception) {
+                // Falha silenciosa — reverte o flag mas mantém dados do
+                // ciclo atual. Poderia mostrar snackbar; deixamos pra
+                // depois pra não introduzir infra nova.
+                _state.update { s ->
+                    (s as? HomeUiState.Content)?.copy(isSwitchingCycle = false) ?: s
+                }
+            }
+        }
+    }
+
     private fun load() {
         viewModelScope.launch {
             _state.value = try {
@@ -78,7 +135,17 @@ class HomeViewModel @Inject constructor(
                 val hasSavings = runCatching {
                     savingsRepository.listAccounts().isNotEmpty()
                 }.getOrDefault(false)
-                HomeUiState.Content(data = home, hasAnySavingsAccount = hasSavings)
+                // Idem: falha ao listar ciclos NÃO derruba a Home; só
+                // deixa as setinhas do CycleNavigator inoperantes até a
+                // próxima abertura.
+                val cycles = runCatching {
+                    cyclesRepository.list()
+                }.getOrDefault(emptyList())
+                HomeUiState.Content(
+                    data = home,
+                    hasAnySavingsAccount = hasSavings,
+                    cycles = cycles,
+                )
             } catch (e: HttpException) {
                 // Backend retorna 404 quando não há ciclo aberto pra esse usuário.
                 if (e.code() == HTTP_NOT_FOUND) {

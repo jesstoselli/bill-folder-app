@@ -128,6 +128,8 @@ fun ExpensesScreen(
                     onPayExpense = { expense -> payingExpense = expense },
                     onRequestDelete = viewModel::requestDelete,
                     onRequestEdit = viewModel::requestEdit,
+                    onPreviousCycle = viewModel::goToPreviousCycle,
+                    onNextCycle = viewModel::goToNextCycle,
                 )
             }
         }
@@ -180,6 +182,8 @@ private fun ExpensesContent(
     onPayExpense: (ExpenseResponse) -> Unit,
     onRequestDelete: (ExpenseResponse) -> Unit,
     onRequestEdit: (ExpenseResponse) -> Unit,
+    onPreviousCycle: () -> Unit,
+    onNextCycle: () -> Unit,
 ) {
     val expenses = state.expenses
     val total = expenses.sumOf { it.actualAmount ?: it.expectedAmount }
@@ -197,8 +201,8 @@ private fun ExpensesContent(
                 cycleLabel = state.cycle.label,
                 startIso = state.cycle.startDate,
                 endIso = state.cycle.endDate,
-                onPrevious = { /* TODO navegação de ciclo */ },
-                onNext = { /* TODO */ },
+                onPrevious = onPreviousCycle,
+                onNext = onNextCycle,
             )
         }
 

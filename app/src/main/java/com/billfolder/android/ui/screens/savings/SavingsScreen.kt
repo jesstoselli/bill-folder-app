@@ -158,6 +158,8 @@ fun SavingsScreen(
                     onAddAccount = { showAddAccountSheet = true },
                     onRequestDeleteTransaction = viewModel::requestDelete,
                     onRequestEditTransaction = viewModel::requestEdit,
+                    onPreviousCycle = viewModel::goToPreviousCycle,
+                    onNextCycle = viewModel::goToNextCycle,
                 )
             }
         }
@@ -219,6 +221,8 @@ private fun Content(
     onAddAccount: () -> Unit,
     onRequestDeleteTransaction: (SavingsTransactionResponse) -> Unit,
     onRequestEditTransaction: (SavingsTransactionResponse) -> Unit,
+    onPreviousCycle: () -> Unit,
+    onNextCycle: () -> Unit,
 ) {
     val transactions = state.transactionsForSelectedAccount()
     val netFlow = state.netFlowForSelectedAccount()
@@ -233,8 +237,8 @@ private fun Content(
                 cycleLabel = state.cycle.label,
                 startIso = state.cycle.startDate,
                 endIso = state.cycle.endDate,
-                onPrevious = { /* TODO multi-cycle nav */ },
-                onNext = { /* TODO multi-cycle nav */ },
+                onPrevious = onPreviousCycle,
+                onNext = onNextCycle,
             )
         }
 

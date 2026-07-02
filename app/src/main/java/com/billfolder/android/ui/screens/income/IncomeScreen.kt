@@ -135,6 +135,8 @@ fun IncomeScreen(
                     onRequestEdit = viewModel::requestEdit,
                     onRequestDeleteSource = viewModel::requestDeleteSource,
                     onRequestEditSource = viewModel::requestEditSource,
+                    onPreviousCycle = viewModel::goToPreviousCycle,
+                    onNextCycle = viewModel::goToNextCycle,
                 )
             }
         }
@@ -221,6 +223,8 @@ private fun IncomeContent(
     onRequestEdit: (IncomeEntryResponse) -> Unit,
     onRequestDeleteSource: (IncomeSourceResponse) -> Unit,
     onRequestEditSource: (IncomeSourceResponse) -> Unit,
+    onPreviousCycle: () -> Unit,
+    onNextCycle: () -> Unit,
 ) {
     val entries = state.entries
     val sources = state.sources
@@ -245,8 +249,8 @@ private fun IncomeContent(
                 cycleLabel = state.cycle.label,
                 startIso = state.cycle.startDate,
                 endIso = state.cycle.endDate,
-                onPrevious = { /* TODO */ },
-                onNext = { /* TODO */ },
+                onPrevious = onPreviousCycle,
+                onNext = onNextCycle,
             )
         }
 

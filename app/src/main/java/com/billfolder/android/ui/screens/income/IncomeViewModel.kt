@@ -7,6 +7,8 @@ import com.billfolder.android.data.dto.IncomeEntryResponse
 import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.IncomeRepository
+import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -54,6 +56,9 @@ sealed interface IncomeUiState {
         val pendingDeleteSource: IncomeSourceResponse? = null,
         val editingSource: IncomeSourceResponse? = null,
         val deletingSourceId: String? = null,
+        // Cycle navigation
+        val cycles: List<CycleResponse> = emptyList(),
+        val isSwitchingCycle: Boolean = false,
     ) : IncomeUiState
     data class Error(val message: String) : IncomeUiState
 }
@@ -254,6 +259,50 @@ class IncomeViewModel @Inject constructor(
         }
     }
 
+    // ------------------------------------------------------------------------
+    // Cycle navigation (setinhas do CycleNavigator)
+    // ------------------------------------------------------------------------
+
+    fun goToPreviousCycle() = navigate(CycleDirection.PREVIOUS)
+    fun goToNextCycle()     = navigate(CycleDirection.NEXT)
+
+    private fun navigate(direction: CycleDirection) {
+        val current = _state.value as? IncomeUiState.Content ?: return
+        if (current.isSwitchingCycle) return
+        val target = resolveAdjacentCycle(current.cycles, current.cycle.id, direction)
+            ?: return
+
+        _state.update {
+            (it as? IncomeUiState.Content)?.copy(isSwitchingCycle = true) ?: it
+        }
+
+        viewModelScope.launch {
+            try {
+                // Só entries muda de ciclo — sources é config global do user,
+                // não janelada por período.
+                val entries = incomeRepository.listEntries(
+                    from = target.startDate,
+                    to = target.endDate,
+                )
+                _state.update { s ->
+                    (s as? IncomeUiState.Content)?.copy(
+                        cycle = target,
+                        entries = entries.sortedBy { it.expectedDate },
+                        isSwitchingCycle = false,
+                        pendingDelete = null,
+                        editing = null,
+                        pendingDeleteSource = null,
+                        editingSource = null,
+                    ) ?: s
+                }
+            } catch (e: Exception) {
+                _state.update { s ->
+                    (s as? IncomeUiState.Content)?.copy(isSwitchingCycle = false) ?: s
+                }
+            }
+        }
+    }
+
     private fun load() {
         viewModelScope.launch {
             _state.value = try {
@@ -272,6 +321,8 @@ class IncomeViewModel @Inject constructor(
                         Pair(it[0] as List<IncomeEntryResponse>, it[1] as List<IncomeSourceResponse>)
                     }
                 }
+                // Best-effort: falha em listar ciclos não derruba a tela.
+                val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
                 IncomeUiState.Content(
                     cycle = cycle,
                     entries = entries.sortedBy { it.expectedDate },
@@ -282,6 +333,7 @@ class IncomeViewModel @Inject constructor(
                     // Quando expor isActive na sheet de edit, vale considerar
                     // visual diferenciado pra inativas.
                     sources = sources,
+                    cycles = cycles,
                 )
             } catch (e: HttpException) {
                 if (e.code() == HTTP_NOT_FOUND) {

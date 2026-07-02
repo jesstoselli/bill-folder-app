@@ -12,6 +12,10 @@ class HomeRepository @Inject constructor(
     /**
      * Devolve o snapshot do dashboard. Erros (rede, HTTP) propagam como
      * exceção — o ViewModel converte pra estado de UI.
+     *
+     * cycleId null = ciclo atual (default). Passar cycleId específico é
+     * o hook da navegação prev/next: a Home passa o ID do ciclo escolhido
+     * no CycleNavigator e recebe os agregados daquele ciclo.
      */
-    suspend fun getHome(): HomeResponse = api.getHome()
+    suspend fun getHome(cycleId: String? = null): HomeResponse = api.getHome(cycleId)
 }
