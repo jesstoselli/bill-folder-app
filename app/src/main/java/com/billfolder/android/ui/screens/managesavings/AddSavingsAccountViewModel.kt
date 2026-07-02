@@ -81,18 +81,39 @@ class AddSavingsAccountViewModel @Inject constructor(
      */
     fun resetForm() {
         val current = _state.value
+        val defaultChecking = current.checkingAccounts.firstOrNull { it.isPrimary }
+            ?: current.checkingAccounts.firstOrNull()
         _state.value = AddSavingsAccountFormState(
             checkingAccounts = current.checkingAccounts,
             isLoadingReferences = current.isLoadingReferences,
-            checkingAccountId = current.checkingAccounts.firstOrNull { it.isPrimary }?.id
-                ?: current.checkingAccounts.firstOrNull()?.id,
+            checkingAccountId = defaultChecking?.id,
+            // Auto-fill dos dados que a UI escondeu — herda da checking
+            // pré-selecionada. O user brasileiro típico usa mesmo banco/
+            // agência/número da conta pra a poupança vinculada; o sheet
+            // simplifica pra 2 campos (checking + saldo inicial) e o VM
+            // preserva contrato do backend enviando os 3 campos.
+            bankName = defaultChecking?.bankName.orEmpty(),
+            branch = defaultChecking?.branch.orEmpty(),
+            accountNumber = defaultChecking?.accountNumber.orEmpty(),
         )
     }
 
-    fun onCheckingChange(id: String) = _state.update { it.copy(checkingAccountId = id) }
-    fun onBankNameChange(value: String) = _state.update { it.copy(bankName = value) }
-    fun onBranchChange(value: String) = _state.update { it.copy(branch = value) }
-    fun onAccountNumberChange(value: String) = _state.update { it.copy(accountNumber = value) }
+    /**
+     * Trocar a checking selecionada refresca os 3 campos herdados
+     * (bankName/branch/accountNumber) com os dados da nova checking. A
+     * sheet não expõe esses campos visualmente, mas o backend ainda
+     * espera receber; herdar automaticamente cobre 99% dos casos.
+     */
+    fun onCheckingChange(id: String) = _state.update { current ->
+        val checking = current.checkingAccounts.firstOrNull { it.id == id }
+        current.copy(
+            checkingAccountId = id,
+            bankName = checking?.bankName ?: current.bankName,
+            branch = checking?.branch.orEmpty(),
+            accountNumber = checking?.accountNumber.orEmpty(),
+        )
+    }
+
     fun onInitialBalanceChange(value: String) = _state.update { it.copy(initialBalance = value) }
 
     /**
@@ -190,15 +211,21 @@ class AddSavingsAccountViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val checkings = referenceDataRepository.getCheckingAccounts()
+                val defaultChecking = checkings.firstOrNull { c -> c.isPrimary }
+                    ?: checkings.firstOrNull()
+
                 _state.update {
+                    // Pré-seleciona a primary só em modo create. Em edit, o
+                    // prefill já setou checkingAccountId + os 3 herdados
+                    // do próprio SavingsAccountResponse.
+                    val shouldAutoFill = it.checkingAccountId == null
                     it.copy(
                         checkingAccounts = checkings,
                         isLoadingReferences = false,
-                        // Pré-seleciona a primary só em modo create. Em edit,
-                        // o prefill cuida de setar o checking original.
-                        checkingAccountId = it.checkingAccountId
-                            ?: checkings.firstOrNull { c -> c.isPrimary }?.id
-                            ?: checkings.firstOrNull()?.id,
+                        checkingAccountId = it.checkingAccountId ?: defaultChecking?.id,
+                        bankName = if (shouldAutoFill) defaultChecking?.bankName.orEmpty() else it.bankName,
+                        branch = if (shouldAutoFill) defaultChecking?.branch.orEmpty() else it.branch,
+                        accountNumber = if (shouldAutoFill) defaultChecking?.accountNumber.orEmpty() else it.accountNumber,
                     )
                 }
             } catch (e: Exception) {

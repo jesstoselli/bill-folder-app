@@ -11,14 +11,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.ui.components.BillFolderDropdown
 import com.billfolder.android.ui.components.BillFolderMoneyField
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
-import com.billfolder.android.ui.components.BillFolderTextField
 import com.billfolder.android.ui.components.BillFolderTransactionSheet
 import com.billfolder.android.ui.components.DropdownOption
 
@@ -26,13 +24,20 @@ import com.billfolder.android.ui.components.DropdownOption
  * Sheet de "nova/editar poupança". Cria/atualiza a entidade SavingsAccount.
  *
  * Modos:
- *  - Create (existing == null): POST com todos os campos. Dropdown de
- *    checking habilitado (e pré-seleciona a primary).
+ *  - Create (existing == null): POST. Dropdown de checking habilitado
+ *    (pré-seleciona a primary). Ao trocar, banco/agência/número são
+ *    auto-preenchidos com os dados da checking selecionada.
  *  - Edit (existing != null): PATCH parcial. Dropdown de checking
- *    DESABILITADO (vínculo é imutável no PATCH); banco/agência/número/
- *    saldo inicial editáveis. Hint avisa o user.
+ *    DESABILITADO (vínculo é imutável no PATCH); só initialBalance
+ *    editável na UI. Hint avisa o user.
  *
- * Validações 1:1 com o backend (BillFolder.Application/Validators):
+ * Simplificação UX (feb/2027): banco/agência/número da conta ficaram
+ * escondidos do form — o caso brasileiro típico é a poupança usar mesmo
+ * banco/agência/número da checking vinculada, então o VM auto-preenche
+ * e a sheet mostra só 2 campos visuais (checking + saldo inicial). Os
+ * 3 campos continuam sendo enviados ao backend por baixo dos panos.
+ *
+ * Validações do backend (mantidas):
  *  - bankName: obrigatório, max 100
  *  - branch: obrigatório, max 20
  *  - accountNumber: obrigatório, max 30
@@ -160,32 +165,12 @@ fun AddSavingsAccountSheet(
             )
         }
 
-        BillFolderTextField(
-            value = state.bankName,
-            onValueChange = viewModel::onBankNameChange,
-            label = stringResource(R.string.add_savings_field_bank_name),
-            imeAction = ImeAction.Next,
-            keyboardType = KeyboardType.Text,
-            enabled = !state.isSaving,
-        )
-
-        BillFolderTextField(
-            value = state.branch,
-            onValueChange = viewModel::onBranchChange,
-            label = stringResource(R.string.add_savings_field_branch),
-            imeAction = ImeAction.Next,
-            keyboardType = KeyboardType.Text,
-            enabled = !state.isSaving,
-        )
-
-        BillFolderTextField(
-            value = state.accountNumber,
-            onValueChange = viewModel::onAccountNumberChange,
-            label = stringResource(R.string.add_savings_field_account_number),
-            imeAction = ImeAction.Next,
-            keyboardType = KeyboardType.Text,
-            enabled = !state.isSaving,
-        )
+        // Banco/agência/número da conta são herdados automaticamente da
+        // checking selecionada — pra o caso brasileiro típico (poupança
+        // vinculada usa mesmo banco/agência/número). Os 3 continuam sendo
+        // enviados ao backend via VM; só sumiram do form. Se algum user
+        // precisar de valores diferentes num edge case, edita direto no
+        // banco de dados (ou a gente adiciona um "modo avançado" no futuro).
 
         BillFolderMoneyField(
             value = state.initialBalance,
