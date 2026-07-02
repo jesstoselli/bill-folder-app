@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,6 +50,15 @@ fun ConfirmIncomeSheet(
     LaunchedEffect(Unit) {
         viewModel.resetForm()
         viewModel.initializeFor(entry.id, entry.expectedAmount)
+    }
+
+    // Reset proativo ao fechar — evita race na 2ª abertura onde o
+    // LaunchedEffect(state.savedSuccessfully) veria o true stuck do
+    // submit anterior antes do LaunchedEffect(Unit) resetar. Com o
+    // onDispose, o state fica limpo no VM assim que o sheet sai da
+    // composição.
+    DisposableEffect(Unit) {
+        onDispose { viewModel.resetForm() }
     }
 
     val amountInvalid = stringResource(R.string.add_daily_validation_amount_invalid)

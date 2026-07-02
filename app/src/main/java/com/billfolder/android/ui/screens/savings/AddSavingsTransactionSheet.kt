@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -60,6 +61,15 @@ fun AddSavingsTransactionSheet(
         if (existing != null) {
             viewModel.prefill(existing)
         }
+    }
+
+    // Reset proativo ao fechar — evita race na 2ª abertura onde o
+    // LaunchedEffect(state.savedSuccessfully) veria o true stuck do
+    // submit anterior antes do LaunchedEffect(Unit) resetar. Com o
+    // onDispose, o state fica limpo no VM assim que o sheet sai da
+    // composição.
+    DisposableEffect(Unit) {
+        onDispose { viewModel.resetForm() }
     }
 
     LaunchedEffect(preferredAccountId, state.isLoadingReferences) {
