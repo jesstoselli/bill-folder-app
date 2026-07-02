@@ -1,6 +1,8 @@
 package com.billfolder.android.ui.util
 
 import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 
 /**
  * Porta client-side do BillFolder.Application.UseCases.Cards.CardCycleCalculator.
@@ -94,4 +96,19 @@ private fun addMonths(year: Int, month: Int, delta: Int): Pair<Int, Int> {
     val newYear = totalMonths / 12
     val newMonth = (totalMonths % 12) + 1
     return newYear to newMonth
+}
+
+// --- label pt-BR --------------------------------------------------------
+
+private val PtBrLocale: Locale =
+    Locale.Builder().setLanguage("pt").setRegion("BR").build()
+
+/**
+ * Retorna o label pt-BR "mês/ano" pra uma data (ex: 2026-07-25 → "julho/2026").
+ * Mesma convenção do CreateCycleViewModel e do backend GenerateLabel.
+ * Usado pela CardsScreen pra rotular a fatura vista no CycleNavigator.
+ */
+fun ptBrMonthYearOf(date: LocalDate): String {
+    val monthName = date.month.getDisplayName(TextStyle.FULL, PtBrLocale).lowercase(PtBrLocale)
+    return "$monthName/${date.year}"
 }

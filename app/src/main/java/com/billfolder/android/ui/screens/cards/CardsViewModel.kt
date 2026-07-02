@@ -5,10 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CreditCardAccountResponse
-import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.repository.CardsRepository
-import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.ui.navigation.Routes
+import com.billfolder.android.ui.util.StatementPeriod
 import com.billfolder.android.ui.util.computeStatementForPurchase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -28,17 +27,29 @@ import javax.inject.Inject
  * Tela "despesas no cartão" (consumo). Mostra:
  *  - Carousel horizontal de cartões cadastrados (chips)
  *  - Lista vertical de compras (CardEntry) do cartão selecionado,
- *    filtrada pelo ciclo atual via purchaseDate
+ *    filtrada pela FATURA daquele cartão (não pelo ciclo BillFolder)
  *
- * Ciclo é necessário porque "compras desse cartão" só faz sentido
- * janelado num período. Se não houver ciclo, mostra NoCycle.
+ * Cada cartão tem seu próprio ciclo (fechamento → vencimento), diferente
+ * do ciclo mensal do BillFolder. Um cartão que fecha dia 17 tem faturas
+ * cobrindo (18/mês N-1 → 17/mês N), enquanto o ciclo BillFolder é
+ * (01/mês → último dia do mês). Por isso essa tela NÃO usa CycleResponse
+ * — ela navega entre faturas do cartão via `referencePurchaseDate`, uma
+ * data-âncora que representa qual fatura está sendo visualizada.
  *
- * Cartões + entries carregadas em paralelo. Trocar de cartão no carousel
- * só atualiza o `selectedCardId` no estado — entries já estão todas
- * carregadas e filtramos local.
+ * `referencePurchaseDate` inicial é hoje. Ao setar prev/next, shift ±1 mês
+ * na âncora, e o `computeStatementForPurchase` recalcula os limites da
+ * fatura com o closingDay/dueDay do cartão. Trocar de cartão no carousel
+ * mantém a mesma âncora — a fatura recomputa pros parâmetros do novo
+ * cartão, então o user "muda de cartão" mas continua olhando pra fatura
+ * de julho, por exemplo.
+ *
+ * Cartões + entries carregadas em paralelo. Entries carrega TUDO
+ * (`cardsRepository.listEntries()` sem from/to) e filtramos client-side
+ * porque o volume por usuário é baixo (dezenas/centenas de compras) e
+ * permite navegar entre faturas sem re-fetch.
  *
  * Estados de ação por entry:
- *  - pendingDelete: entry em swipe-left aguardando confirmação no AlertDialog
+ *  - pendingDelete: entry em swipe-left aguardando confirmação
  *  - editing: entry em swipe-right com sheet de edit aberta
  *  - deletingId: id da entry sendo deletada (entre confirm e resposta)
  *
@@ -50,13 +61,18 @@ import javax.inject.Inject
  */
 sealed interface CardsUiState {
     data object Loading : CardsUiState
-    data object NoCycle : CardsUiState
     data object NoCards : CardsUiState
     data class Content(
-        val cycle: CycleResponse,
         val cards: List<CreditCardAccountResponse>,
         val allEntries: List<CardEntryResponse>,
         val selectedCardId: String,
+        /**
+         * Data-âncora dentro da fatura atualmente visualizada. Inicia como
+         * hoje, e prev/next shiftam ±1 mês. Combinada com closingDay/dueDay
+         * do cartão selecionado, resolve deterministicamente qual fatura
+         * está sendo vista via `computeStatementForPurchase`.
+         */
+        val referencePurchaseDate: LocalDate,
         val pendingDelete: CardEntryResponse? = null,
         val editing: CardEntryResponse? = null,
         val deletingId: String? = null,
@@ -68,7 +84,6 @@ sealed interface CardsUiState {
 class CardsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val cardsRepository: CardsRepository,
-    private val cyclesRepository: CyclesRepository,
 ) : ViewModel() {
 
     /**
@@ -187,10 +202,34 @@ class CardsViewModel @Inject constructor(
         }
     }
 
+    // ------------------------------------------------------------------------
+    // Fatura anterior/próxima (setinhas do CycleNavigator).
+    //
+    // Diferente das outras telas, aqui NÃO navegamos entre ciclos BillFolder
+    // — navegamos entre FATURAS do cartão selecionado. Shift ±1 mês na
+    // referencePurchaseDate; o statement é recomputado no render usando o
+    // closingDay/dueDay do cartão via computeStatementForPurchase.
+    //
+    // Filtro e header ambos usam o mesmo statement, então shift na âncora
+    // basta — nada de refetch, sem estado adicional.
+    // ------------------------------------------------------------------------
+
+    fun goToPreviousCycle() = shiftReferenceDate(months = -1L)
+    fun goToNextCycle()     = shiftReferenceDate(months = 1L)
+
+    private fun shiftReferenceDate(months: Long) {
+        _state.update { s ->
+            (s as? CardsUiState.Content)?.copy(
+                referencePurchaseDate = s.referencePurchaseDate.plusMonths(months),
+                pendingDelete = null,
+                editing = null,
+            ) ?: s
+        }
+    }
+
     private fun load() {
         viewModelScope.launch {
             _state.value = try {
-                val cycle = cyclesRepository.getCurrent()
                 val (cards, entries) = coroutineScope {
                     val c = async { cardsRepository.listCards() }
                     val e = async { cardsRepository.listEntries() }
@@ -211,18 +250,14 @@ class CardsViewModel @Inject constructor(
                         ?.id
                         ?: cards.first().id
                     CardsUiState.Content(
-                        cycle = cycle,
                         cards = cards,
                         allEntries = entries,
                         selectedCardId = initialSelected,
+                        referencePurchaseDate = LocalDate.now(),
                     )
                 }
             } catch (e: HttpException) {
-                if (e.code() == HTTP_NOT_FOUND) {
-                    CardsUiState.NoCycle
-                } else {
-                    CardsUiState.Error("Erro ao carregar (HTTP ${e.code()})")
-                }
+                CardsUiState.Error("Erro ao carregar (HTTP ${e.code()})")
             } catch (e: IOException) {
                 CardsUiState.Error("Sem conexão. Verifique sua internet.")
             } catch (e: Exception) {
@@ -230,49 +265,44 @@ class CardsViewModel @Inject constructor(
             }
         }
     }
-
-    private companion object {
-        const val HTTP_NOT_FOUND = 404
-    }
 }
 
 /**
- * Filtra entries do cartão selecionado que compõem a fatura vencendo
- * dentro do ciclo BillFolder atual.
+ * Statement (fatura) do cartão selecionado, computado a partir da data-
+ * âncora do estado. Se não houver cartão selecionado válido, retorna null.
+ */
+fun CardsUiState.Content.currentStatement(): StatementPeriod? {
+    val card = cards.firstOrNull { it.id == selectedCardId } ?: return null
+    return computeStatementForPurchase(
+        purchaseDate = referencePurchaseDate,
+        closingDay = card.closingDay,
+        dueDay = card.dueDay,
+    )
+}
+
+/**
+ * Compras do cartão selecionado que compõem a FATURA atualmente vista.
  *
- * Semântica: "quais compras estou pagando esse mês pelo cartão X?"
- * (opção B do design). Isso respeita o closingDay do cartão — se o
- * cartão fecha dia 17 e o ciclo BillFolder é maio (01/mai → 31/mai),
- * as entries visíveis são as compras de 18/abr → 17/mai (fatura que
- * vence em maio via dueDay).
+ * Semântica: "quais compras estão nessa fatura?" — filtra entries do
+ * cartão selecionado cujo purchaseDate está dentro do período da fatura
+ * (periodStart → periodEnd). Isso respeita o closingDay do cartão: se
+ * fecha dia 17, uma compra de 18/junho vai pra fatura de JULHO (período
+ * 18/jun → 17/jul), e uma de 15/junho vai pra fatura de JUNHO.
  *
- * Antes filtrava por purchaseDate dentro do ciclo — o que ignorava
- * o closingDay e agrupava compras erradas (a compra de dia 18/mai
- * aparecia como "no ciclo de maio" quando na verdade vai pra fatura
- * de junho, que só vence e afeta o ciclo BillFolder de junho).
- *
- * Nota parcelamento: uma compra de R$ 600 em 6x aparece UMA VEZ, na
- * fatura da 1ª parcela. Parcelas 2..6 estão em faturas futuras e são
- * visíveis nos ciclos BillFolder correspondentes. Faz sentido: cada
- * ciclo vê o que veio pela primeira vez naquela fatura.
+ * Nota parcelamento: uma compra em 6x aparece UMA VEZ na fatura da 1ª
+ * parcela. Parcelas 2..6 estão em faturas futuras (cada uma com sua
+ * própria purchaseDate no backend). Faz sentido: cada fatura vê o que
+ * veio pela primeira vez nela.
  */
 fun CardsUiState.Content.entriesForSelectedCard(): List<CardEntryResponse> {
-    val card = cards.firstOrNull { it.id == selectedCardId } ?: return emptyList()
-    val cycleStart = LocalDate.parse(cycle.startDate)
-    val cycleEnd = LocalDate.parse(cycle.endDate)
+    val statement = currentStatement() ?: return emptyList()
 
     return allEntries
         .filter { it.cardId == selectedCardId }
         .filter { entry ->
             val purchase = runCatching { LocalDate.parse(entry.purchaseDate) }.getOrNull()
                 ?: return@filter false
-            val statement = computeStatementForPurchase(
-                purchaseDate = purchase,
-                closingDay = card.closingDay,
-                dueDay = card.dueDay,
-            )
-            // Fatura desta compra vence dentro do ciclo BillFolder atual?
-            statement.dueDate in cycleStart..cycleEnd
+            purchase in statement.periodStart..statement.periodEnd
         }
         .sortedByDescending { it.purchaseDate }
 }

@@ -48,7 +48,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CreditCardAccountResponse
-import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.cards.components.AddCardChip
@@ -56,6 +55,7 @@ import com.billfolder.android.ui.screens.cards.components.CardCarouselChip
 import com.billfolder.android.ui.screens.cards.components.CardEntryRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
+import com.billfolder.android.ui.util.ptBrMonthYearOf
 
 /**
  * Tela "despesas no cartão" — visão de consumo.
@@ -131,7 +131,6 @@ fun CardsScreen(
         ) {
             when (val s = state) {
                 CardsUiState.Loading -> CenteredLoading()
-                CardsUiState.NoCycle -> NoCycleEmptyState()
                 CardsUiState.NoCards -> NoCardsEmptyState()
                 is CardsUiState.Error -> ErrorState(
                     message = s.message,
@@ -143,6 +142,8 @@ fun CardsScreen(
                     onAddCard = { showAddCardSheet = true },
                     onRequestDeleteEntry = viewModel::requestDelete,
                     onRequestEditEntry = viewModel::requestEdit,
+                    onPreviousCycle = viewModel::goToPreviousCycle,
+                    onNextCycle = viewModel::goToNextCycle,
                 )
             }
         }
@@ -194,6 +195,8 @@ private fun Content(
     onAddCard: () -> Unit,
     onRequestDeleteEntry: (com.billfolder.android.data.dto.CardEntryResponse) -> Unit,
     onRequestEditEntry: (com.billfolder.android.data.dto.CardEntryResponse) -> Unit,
+    onPreviousCycle: () -> Unit,
+    onNextCycle: () -> Unit,
 ) {
     val entries = state.entriesForSelectedCard()
     val total = entries.sumOf { it.totalAmount }
@@ -203,14 +206,24 @@ private fun Content(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Statement (fatura) do cartão selecionado — computado a partir da
+        // data-âncora (referencePurchaseDate) + closingDay/dueDay do cartão.
+        // Diferente das outras telas, aqui o "ciclo" mostrado é o do
+        // CARTÃO (fechamento → vencimento), não o do BillFolder. O label
+        // vem do mês/ano da dueDate: fatura fechada em 17/jul e vencendo
+        // em 25/jul aparece como "julho/2026".
+        val statement = state.currentStatement()
         item {
-            CycleNavigator(
-                cycleLabel = state.cycle.label,
-                startIso = state.cycle.startDate,
-                endIso = state.cycle.endDate,
-                onPrevious = { /* TODO */ },
-                onNext = { /* TODO */ },
-            )
+            if (statement != null) {
+                CycleNavigator(
+                    cycleLabel = ptBrMonthYearOf(statement.dueDate),
+                    startIso = statement.periodStart.toString(),
+                    endIso = statement.periodEnd.toString(),
+                    onPrevious = onPreviousCycle,
+                    onNext = onNextCycle,
+                    headerLabelOverride = ptBrMonthYearOf(statement.dueDate),
+                )
+            }
         }
 
         item {
@@ -344,32 +357,6 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             OutlinedButton(onClick = onRetry, shape = PillShape) {
                 Text(stringResource(R.string.common_retry))
             }
-        }
-    }
-}
-
-@Composable
-private fun NoCycleEmptyState() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(R.string.income_no_cycle_title),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.income_no_cycle_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }

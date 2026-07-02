@@ -28,9 +28,14 @@ import java.util.Locale
  * Navegador de ciclo. Mostra o label do ciclo atual em fonte grande,
  * range de datas embaixo, e setas pra navegar pra ciclo anterior/próximo.
  *
- * Por enquanto as setas são ativas mas sem ação real — backend ainda não
- * tem GET /v1/cycles?direction=prev|next implementado. Quando tiver,
- * onPrevious/onNext fazem o request e o ViewModel atualiza o state.
+ * A navegação prev/next é resolvida client-side: cada VM carrega a lista
+ * completa de ciclos do user (CyclesRepository.list()) e usa
+ * resolveAdjacentCycle(...) pra achar o vizinho por startDate ordenado.
+ * Home usa GET /v1/home?cycleId=; as outras telas re-fetcham suas listas
+ * com from/to do ciclo alvo.
+ *
+ * Se o user já está no extremo (primeiro/último ciclo), o callback é no-op —
+ * feedback visual pra "no more cycles" pode entrar depois.
  */
 @Composable
 fun CycleNavigator(
@@ -40,6 +45,13 @@ fun CycleNavigator(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Se null (default), o header deriva "mês/ano" do startIso — comportamento
+     * legado das telas de ciclo BillFolder. Se não-null, usa esse valor direto
+     * (usado pela CardsScreen, onde o header é "mês/ano da dueDate da fatura",
+     * não do periodStart — a fatura de julho começa em 18/junho).
+     */
+    headerLabelOverride: String? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -48,7 +60,7 @@ fun CycleNavigator(
             horizontalArrangement = Arrangement.Start,
         ) {
             Text(
-                text = formatPrettyMonthYear(cycleLabel, startIso),
+                text = headerLabelOverride ?: formatPrettyMonthYear(cycleLabel, startIso),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
             )
