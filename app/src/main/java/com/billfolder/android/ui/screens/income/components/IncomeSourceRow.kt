@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.IncomeSourceResponse
+import com.billfolder.android.ui.screens.home.components.StatusChip
 import com.billfolder.android.ui.theme.MoneyRow
 import com.billfolder.android.ui.util.formatBrl
 
@@ -26,18 +27,23 @@ import com.billfolder.android.ui.util.formatBrl
  *
  * Layout:
  *   [origin]                R$ [defaultAmount]
- *   todo dia [expectedDay]
+ *   todo dia [expectedDay]     [chip status?]
  *
- * Sem chip de status — sources são config, não transação. `onClick`
- * opcional: quando passado, tap na row abre ConfirmIncomeSheet pra
- * confirmar o recebimento da entry vinculada à source no ciclo atual.
- * O caller (IncomeScreen) só passa onClick se a entry existir e
- * estiver em status expected/late; senão passa null (row não tappable).
+ * `onClick` opcional: quando passado, tap na row abre ConfirmIncomeSheet
+ * pra confirmar o recebimento da entry vinculada à source no ciclo atual.
+ * O caller (IncomeScreen) só passa onClick se a entry existir e estiver
+ * em status expected/late; senão passa null (row não tappable).
+ *
+ * `linkedEntryStatus` opcional: quando a source tem uma entry
+ * materializada no ciclo atual, o status dessa entry aparece como chip
+ * (recebido/em atraso/esperado etc). Se null, source ainda não tem
+ * expansão no ciclo (edge case) e nenhum chip renderiza.
  */
 @Composable
 fun IncomeSourceRow(
     source: IncomeSourceResponse,
     onClick: (() -> Unit)? = null,
+    linkedEntryStatus: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -72,11 +78,17 @@ fun IncomeSourceRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = formatBrl(source.defaultAmount),
-                style = MoneyRow,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = formatBrl(source.defaultAmount),
+                    style = MoneyRow,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (linkedEntryStatus != null) {
+                    Spacer(Modifier.height(4.dp))
+                    StatusChip(status = linkedEntryStatus)
+                }
+            }
         }
     }
 }

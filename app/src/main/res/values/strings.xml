@@ -45,6 +45,11 @@
     <string name="topbar_menu">menu</string>
     <string name="topbar_profile">perfil</string>
 
+    <!-- Logout confirmation dialog -->
+    <string name="logout_dialog_title">sair da conta?</string>
+    <string name="logout_dialog_message">Você vai precisar fazer login novamente pra voltar. Continuar?</string>
+    <string name="logout_dialog_confirm">Sair</string>
+
     <!-- Auth -->
     <string name="auth_welcome_back">Bem-vindo de volta</string>
     <string name="auth_create_account_title">Crie sua conta</string>

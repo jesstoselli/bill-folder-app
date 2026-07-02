@@ -88,6 +88,9 @@ fun HomeScreen(
     var showAddCardSheet by remember { mutableStateOf(false) }
     var showAddSavingsTransactionSheet by remember { mutableStateOf(false) }
     var showCreateCycleSheet by remember { mutableStateOf(false) }
+    // Confirm dialog antes de deslogar — evita logout acidental por tap
+    // errado no avatar (o alvo é pequeno e fica perto do topo da tela).
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
     // Atalho de poupança no Speed Dial só é habilitado quando o user
     // tem ao menos uma SavingsAccount cadastrada. Em estados pré-Content
@@ -98,7 +101,7 @@ fun HomeScreen(
     HomeScaffold(
         state = state,
         onMenuClick = onMenuClick,
-        onAvatarClick = { viewModel.logout(onDone = onLogout) },
+        onAvatarClick = { showLogoutConfirm = true },
         onRefresh = viewModel::refresh,
         onCreateCycle = { showCreateCycleSheet = true },
         onSpeedDialDaily = { showAddDailySheet = true },
@@ -152,6 +155,44 @@ fun HomeScreen(
             onSaved = { viewModel.refresh() },
         )
     }
+
+    if (showLogoutConfirm) {
+        LogoutConfirmDialog(
+            onConfirm = {
+                showLogoutConfirm = false
+                viewModel.logout(onDone = onLogout)
+            },
+            onCancel = { showLogoutConfirm = false },
+        )
+    }
+}
+
+@Composable
+private fun LogoutConfirmDialog(
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(text = stringResource(R.string.logout_dialog_title)) },
+        text = { Text(text = stringResource(R.string.logout_dialog_message)) },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = onConfirm,
+                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(stringResource(R.string.logout_dialog_confirm))
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
 }
 
 @Composable

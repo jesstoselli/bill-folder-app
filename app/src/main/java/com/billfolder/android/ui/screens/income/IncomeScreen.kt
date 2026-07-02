@@ -333,6 +333,10 @@ private fun IncomeContent(
                         } else {
                             null
                         },
+                        // Chip mostra o status da entry vinculada — usuário
+                        // vê se aquela fonte já entrou no ciclo (recebido) ou
+                        // ainda tá pendente (esperado/em atraso).
+                        linkedEntryStatus = linkedEntry?.status,
                     )
                 }
             }
