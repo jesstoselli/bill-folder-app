@@ -28,12 +28,16 @@ import com.billfolder.android.ui.util.formatBrl
  *   [origin]                R$ [defaultAmount]
  *   todo dia [expectedDay]
  *
- * Sem chip de status — sources são config, não transação. Tap (futuro)
- * vai abrir tela de edição da source.
+ * Sem chip de status — sources são config, não transação. `onClick`
+ * opcional: quando passado, tap na row abre ConfirmIncomeSheet pra
+ * confirmar o recebimento da entry vinculada à source no ciclo atual.
+ * O caller (IncomeScreen) só passa onClick se a entry existir e
+ * estiver em status expected/late; senão passa null (row não tappable).
  */
 @Composable
 fun IncomeSourceRow(
     source: IncomeSourceResponse,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -42,6 +46,8 @@ fun IncomeSourceRow(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
+        onClick = onClick ?: {},
+        enabled = onClick != null,
     ) {
         Row(
             modifier = Modifier

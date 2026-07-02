@@ -305,13 +305,35 @@ private fun IncomeContent(
 
         if (sources.isNotEmpty()) {
             items(sources, key = { it.id }) { source ->
+                // Resolve a entry vinculada à source no ciclo atual. entries
+                // já vem filtrada pelo ciclo (backend + client-side), então
+                // basta match por sourceId. Uma fonte pode ter no máximo
+                // uma entry por ciclo (materializada pelo IncomeSourceExpansion),
+                // firstOrNull cobre o caso.
+                val linkedEntry = state.entries.firstOrNull { it.sourceId == source.id }
+                val canConfirmSource = linkedEntry != null && (
+                    linkedEntry.status.equals("expected", ignoreCase = true) ||
+                        linkedEntry.status.equals("late", ignoreCase = true)
+                )
+
                 SwipeToActionRow(
                     isPending = state.pendingDeleteSource?.id == source.id ||
                         state.editingSource?.id == source.id,
                     onDelete = { onRequestDeleteSource(source) },
                     onEdit = { onRequestEditSource(source) },
                 ) {
-                    IncomeSourceRow(source = source)
+                    // Tap na source abre o mesmo ConfirmIncomeSheet do tap em
+                    // entry expected/late. Se não há entry pendente vinculada
+                    // (edge case ou já foi confirmada), onClick fica null e a
+                    // row não é tappable — evita reconfirmação acidental.
+                    IncomeSourceRow(
+                        source = source,
+                        onClick = if (canConfirmSource) {
+                            { onConfirmReceive(linkedEntry!!) }
+                        } else {
+                            null
+                        },
+                    )
                 }
             }
         }
