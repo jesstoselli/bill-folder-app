@@ -10,6 +10,7 @@ import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreateDailyExpenseRequest
 import com.billfolder.android.data.dto.CreateExpenseRequest
+import com.billfolder.android.data.dto.CreateCheckingAccountRequest
 import com.billfolder.android.data.dto.CreateCycleRequest
 import com.billfolder.android.data.dto.CreateIncomeEntryRequest
 import com.billfolder.android.data.dto.CreateIncomeSourceRequest
@@ -30,6 +31,7 @@ import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SavingsTransactionResponse
 import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
+import com.billfolder.android.data.dto.UpdateCheckingAccountRequest
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
@@ -110,6 +112,28 @@ interface BillFolderApi {
     /** Contas correntes do usuário. */
     @GET("checking-accounts")
     suspend fun getCheckingAccounts(): List<CheckingAccountResponse>
+
+    @POST("checking-accounts")
+    suspend fun createCheckingAccount(
+        @Body request: CreateCheckingAccountRequest,
+    ): CheckingAccountResponse
+
+    /**
+     * PATCH parcial. Se isPrimary=true, backend desmarca as outras
+     * automaticamente (invariante "no máximo 1 primary por user").
+     */
+    @PATCH("checking-accounts/{id}")
+    suspend fun updateCheckingAccount(
+        @Path("id") id: String,
+        @Body request: UpdateCheckingAccountRequest,
+    ): CheckingAccountResponse
+
+    /**
+     * 204 em sucesso. CASCADE no schema: apagar a conta remove savings
+     * vinculada + income entries que apontavam pra ela (se houver).
+     */
+    @DELETE("checking-accounts/{id}")
+    suspend fun deleteCheckingAccount(@Path("id") id: String): Response<Unit>
 
     // ------------------------------------------------------------------------
     // Cycles

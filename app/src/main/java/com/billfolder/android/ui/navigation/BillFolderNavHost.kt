@@ -24,6 +24,7 @@ import com.billfolder.android.ui.screens.dailyexpenses.DailyExpensesScreen
 import com.billfolder.android.ui.screens.expenses.ExpensesScreen
 import com.billfolder.android.ui.screens.home.HomeScreen
 import com.billfolder.android.ui.screens.income.IncomeScreen
+import com.billfolder.android.ui.screens.managebanks.ManageBanksScreen
 import com.billfolder.android.ui.screens.managecards.ManageCardsScreen
 import com.billfolder.android.ui.screens.managesavings.ManageSavingsScreen
 import com.billfolder.android.ui.screens.savings.SavingsScreen
@@ -217,14 +218,19 @@ fun BillFolderNavHost(
                     onMenuClick = openDrawer,
                 )
             }
+            composable(Routes.MANAGE_BANKS) {
+                ManageBanksScreen(
+                    onMenuClick = openDrawer,
+                )
+            }
         }
     }
 }
 
 /**
  * Mapeia destinos do drawer pra rotas reais. Telas que ainda não existem
- * (Savings, Adjustments, ManageBanks) são no-op por enquanto — só fecham
- * o drawer e ficam onde estão.
+ * (Adjustments) são no-op por enquanto — só fecham o drawer e ficam onde
+ * estão.
  */
 private fun NavHostController.navigateFromDrawer(destination: DrawerDestination) {
     val route = when (destination) {
@@ -236,6 +242,7 @@ private fun NavHostController.navigateFromDrawer(destination: DrawerDestination)
         DrawerDestination.Savings        -> Routes.SAVINGS         // consumo
         DrawerDestination.ManageCards    -> Routes.MANAGE_CARDS    // CRUD
         DrawerDestination.ManageSavings  -> Routes.MANAGE_SAVINGS  // CRUD
+        DrawerDestination.ManageBanks    -> Routes.MANAGE_BANKS    // CRUD
         else -> return // ainda não temos tela; drawer já fechou no caller
     }
     navigate(route) {
@@ -260,6 +267,7 @@ private fun String?.toDrawerDestination(): DrawerDestination? = when (this) {
     Routes.SAVINGS         -> DrawerDestination.Savings
     Routes.MANAGE_CARDS    -> DrawerDestination.ManageCards
     Routes.MANAGE_SAVINGS  -> DrawerDestination.ManageSavings
+    Routes.MANAGE_BANKS    -> DrawerDestination.ManageBanks
     else                   -> null
 }
 

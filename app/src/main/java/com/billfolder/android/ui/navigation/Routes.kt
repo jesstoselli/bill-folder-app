@@ -48,4 +48,5 @@ object Routes {
 
     const val MANAGE_CARDS    = "manage-cards"
     const val MANAGE_SAVINGS  = "manage-savings"
+    const val MANAGE_BANKS = "manage-banks"
 }

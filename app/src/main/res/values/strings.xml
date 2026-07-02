@@ -361,6 +361,34 @@
     <!-- Aviso em modo edit quando a tx é uma transferência (tipo bloqueado) -->
     <string name="add_savings_tx_edit_transfer_hint">transferências entre poupanças não podem ter o tipo alterado por aqui. demais campos seguem editáveis.</string>
 
+    <!-- Manage Banks (gerenciar > bancos) -->
+    <string name="manage_banks_screen_title">bancos</string>
+    <string name="manage_banks_empty_title">você ainda não tem contas correntes cadastradas.</string>
+    <string name="manage_banks_empty_subtitle">cadastre suas contas correntes pra que o saldo inicial delas seja considerado no cálculo do saldo disponível do ciclo e pra permitir vincular poupanças, recebimentos e pagamentos.</string>
+    <string name="manage_banks_delete_dialog_title">deletar conta?</string>
+    <!-- %1$s = nome do banco -->
+    <string name="manage_banks_delete_dialog_message">isso vai apagar a conta do "%1$s" permanentemente. a poupança vinculada (se houver) também será apagada, e recebimentos passados perderão o link com esta conta (histórico preservado). essa ação não pode ser desfeita.</string>
+
+    <!-- Checking Account Row -->
+    <!-- subtítulo: "ag. 0001 · cc. 12345-6" -->
+    <string name="checking_account_subtitle_format">ag. %1$s · cc. %2$s</string>
+    <string name="checking_account_initial_balance_label">saldo inicial</string>
+    <string name="checking_account_primary_chip">principal</string>
+
+    <!-- Add / Edit Checking Account (sheet) -->
+    <string name="add_checking_title">nova conta corrente</string>
+    <string name="add_checking_title_edit">editar conta corrente</string>
+    <string name="add_checking_field_bank_name">banco</string>
+    <string name="add_checking_field_branch">agência</string>
+    <string name="add_checking_field_account_number">número da conta</string>
+    <string name="add_checking_field_initial_balance">saldo inicial</string>
+    <string name="add_checking_field_is_primary">conta principal</string>
+    <string name="add_checking_field_is_primary_hint">a conta principal é sugerida como default em pagamentos e recebimentos. só uma pode estar marcada; ao marcar aqui, a anterior é desmarcada automaticamente.</string>
+    <string name="add_checking_validation_bank_name">Informe o banco.</string>
+    <string name="add_checking_validation_branch">Informe a agência.</string>
+    <string name="add_checking_validation_account_number">Informe o número da conta.</string>
+    <string name="add_checking_validation_initial_balance">Saldo inicial precisa ser zero ou positivo.</string>
+
     <!-- Manage Savings (gerenciar > poupanças) -->
     <string name="manage_savings_screen_title">poupanças</string>
     <string name="manage_savings_empty_title">você ainda não tem poupanças cadastradas.</string>
