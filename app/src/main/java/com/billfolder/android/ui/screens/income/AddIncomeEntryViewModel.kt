@@ -56,6 +56,24 @@ class AddIncomeEntryViewModel @Inject constructor(
         loadSources()
     }
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     *
+     * Preserva sources/isLoadingReferences porque o init só roda uma vez
+     * — se resetássemos, o dropdown ficaria vazio sem forma de recarregar.
+     */
+    fun resetForm() {
+        val current = _state.value
+        _state.value = AddIncomeEntryFormState(
+            sources = current.sources,
+            isLoadingReferences = current.isLoadingReferences,
+        )
+    }
+
     fun onExpectedDateChange(iso: String) = _state.update { it.copy(expectedDate = iso) }
     fun onAmountChange(value: String) = _state.update { it.copy(amount = value) }
     fun onSourceChange(id: String?) = _state.update { it.copy(selectedSourceId = id) }

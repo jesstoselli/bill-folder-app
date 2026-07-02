@@ -71,6 +71,30 @@ class AddDailyExpenseViewModel @Inject constructor(
         loadReferences()
     }
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     *
+     * Preserva references (categories/accounts) e isLoadingReferences
+     * porque o init { loadReferences() } só roda uma vez — se resetássemos,
+     * os dropdowns ficariam vazios sem forma de recarregar. Também
+     * restaura a pré-seleção da conta primária (mesma lógica do
+     * loadReferences).
+     */
+    fun resetForm() {
+        val current = _state.value
+        _state.value = AddDailyExpenseFormState(
+            categories = current.categories,
+            accounts = current.accounts,
+            isLoadingReferences = current.isLoadingReferences,
+            selectedAccountId = current.accounts.firstOrNull { it.isPrimary }?.id
+                ?: current.accounts.firstOrNull()?.id,
+        )
+    }
+
     // ---- Field updaters (UI chama no onValueChange dos inputs) ----
 
     fun onDateChange(iso: String) = _state.update { it.copy(date = iso) }

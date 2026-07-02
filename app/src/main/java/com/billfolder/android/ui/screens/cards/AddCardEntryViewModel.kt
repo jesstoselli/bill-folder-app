@@ -66,6 +66,28 @@ class AddCardEntryViewModel @Inject constructor(
         loadReferences()
     }
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     *
+     * Preserva references (cards/categories) e isLoadingReferences porque
+     * o init { loadReferences() } só roda uma vez — se resetássemos, os
+     * dropdowns ficariam vazios sem forma de recarregar. Também restaura
+     * a pré-seleção do primeiro cartão (mesma lógica do loadReferences).
+     */
+    fun resetForm() {
+        val current = _state.value
+        _state.value = AddCardEntryFormState(
+            cards = current.cards,
+            categories = current.categories,
+            isLoadingReferences = current.isLoadingReferences,
+            selectedCardId = current.cards.firstOrNull()?.id,
+        )
+    }
+
     fun onPurchaseDateChange(iso: String) = _state.update { it.copy(purchaseDate = iso) }
     fun onLabelChange(value: String) = _state.update { it.copy(label = value) }
     fun onTotalAmountChange(value: String) = _state.update { it.copy(totalAmount = value) }

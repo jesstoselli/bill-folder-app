@@ -48,6 +48,17 @@ class AddCreditCardViewModel @Inject constructor(
     private val _state = MutableStateFlow(AddCreditCardFormState())
     val state: StateFlow<AddCreditCardFormState> = _state.asStateFlow()
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     */
+    fun resetForm() {
+        _state.value = AddCreditCardFormState()
+    }
+
     fun onNameChange(value: String) = _state.update { it.copy(name = value) }
     fun onIssuerBankChange(value: String) = _state.update { it.copy(issuerBank = value) }
     fun onBrandChange(value: String) = _state.update { it.copy(brand = value) }

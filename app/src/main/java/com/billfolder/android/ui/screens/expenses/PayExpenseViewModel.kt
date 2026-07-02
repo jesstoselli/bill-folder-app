@@ -49,6 +49,20 @@ class PayExpenseViewModel @Inject constructor(
     val state: StateFlow<PayExpenseFormState> = _state.asStateFlow()
 
     /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     *
+     * Não preservamos accounts aqui porque initializeFor() é sempre
+     * chamado logo após o reset e ele já dispara loadAccounts() de novo.
+     */
+    fun resetForm() {
+        _state.value = PayExpenseFormState()
+    }
+
+    /**
      * Inicializa o formulário pra uma despesa específica. Caller chama
      * isso assim que o sheet aparece passando expense.id e expectedAmount
      * do response — não precisamos GET-ar de novo.

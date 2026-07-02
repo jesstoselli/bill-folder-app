@@ -60,6 +60,25 @@ class AddExpenseViewModel @Inject constructor(
         loadCategories()
     }
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     *
+     * Preserva categories/isLoadingReferences porque o init só roda uma
+     * vez — se resetássemos, o dropdown ficaria vazio sem forma de
+     * recarregar.
+     */
+    fun resetForm() {
+        val current = _state.value
+        _state.value = AddExpenseFormState(
+            categories = current.categories,
+            isLoadingReferences = current.isLoadingReferences,
+        )
+    }
+
     fun onDueDateChange(iso: String) = _state.update { it.copy(dueDate = iso) }
     fun onLabelChange(value: String) = _state.update { it.copy(label = value) }
     fun onAmountChange(value: String) = _state.update { it.copy(amount = value) }

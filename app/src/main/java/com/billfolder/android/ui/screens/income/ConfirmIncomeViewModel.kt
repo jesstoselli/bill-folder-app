@@ -32,6 +32,17 @@ class ConfirmIncomeViewModel @Inject constructor(
     private val _state = MutableStateFlow(ConfirmIncomeFormState())
     val state: StateFlow<ConfirmIncomeFormState> = _state.asStateFlow()
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     */
+    fun resetForm() {
+        _state.value = ConfirmIncomeFormState()
+    }
+
     /** Pré-preenche actualAmount com expectedAmount do entry sendo confirmado. */
     fun initializeFor(entryId: String, expectedAmount: Double) {
         _state.update {

@@ -40,7 +40,12 @@ fun AddExpenseSheet(
 ) {
     val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(existing) {
+    // Reset em cada abertura — o hiltViewModel() é compartilhado no
+    // scope da tela pai, então savedSuccessfully/campos ficam poluídos
+    // entre aberturas se não resetarmos. Ordem importa: reset primeiro,
+    // depois prefill (se edit) — senão o reset zeraria o prefill.
+    LaunchedEffect(Unit) {
+        viewModel.resetForm()
         if (existing != null) {
             viewModel.prefill(existing)
         }

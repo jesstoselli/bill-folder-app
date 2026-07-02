@@ -80,6 +80,27 @@ class AddSavingsTransactionViewModel @Inject constructor(
         loadAccounts()
     }
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     *
+     * Preserva accounts/isLoadingReferences porque o init só roda uma vez
+     * — se resetássemos, o dropdown ficaria vazio sem forma de recarregar.
+     * Também restaura a pré-seleção da primeira poupança (mesma lógica do
+     * loadAccounts).
+     */
+    fun resetForm() {
+        val current = _state.value
+        _state.value = AddSavingsTransactionFormState(
+            accounts = current.accounts,
+            isLoadingReferences = current.isLoadingReferences,
+            savingsAccountId = current.accounts.firstOrNull()?.id,
+        )
+    }
+
     fun onAccountChange(id: String) = _state.update { it.copy(savingsAccountId = id) }
     fun onTypeChange(value: String) = _state.update { it.copy(type = value) }
     fun onAmountChange(value: String) = _state.update { it.copy(amount = value) }

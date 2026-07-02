@@ -48,9 +48,12 @@ fun AddDailyExpenseSheet(
 ) {
     val state by viewModel.state.collectAsState()
 
-    // Em modo edit, prefil os campos uma vez quando a sheet monta.
-    // O prefill é idempotente no VM (checa editingId).
-    LaunchedEffect(existing) {
+    // Reset em cada abertura — o hiltViewModel() é compartilhado no
+    // scope da tela pai, então savedSuccessfully/campos ficam poluídos
+    // entre aberturas se não resetarmos. Ordem importa: reset primeiro,
+    // depois prefill (se edit) — senão o reset zeraria o prefill.
+    LaunchedEffect(Unit) {
+        viewModel.resetForm()
         if (existing != null) {
             viewModel.prefill(existing)
         }

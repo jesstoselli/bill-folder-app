@@ -48,8 +48,12 @@ fun PayExpenseSheet(
 ) {
     val state by viewModel.state.collectAsState()
 
-    // Inicializa o VM uma vez quando o sheet abre.
-    LaunchedEffect(expense.id) {
+    // Reset em cada abertura — o hiltViewModel() é compartilhado no
+    // scope da tela pai, então savedSuccessfully/campos ficam poluídos
+    // entre aberturas se não resetarmos. Ordem importa: reset primeiro,
+    // depois initializeFor — senão o reset zeraria o expenseId/actualAmount.
+    LaunchedEffect(Unit) {
+        viewModel.resetForm()
         viewModel.initializeFor(expense.id, expense.expectedAmount)
     }
 

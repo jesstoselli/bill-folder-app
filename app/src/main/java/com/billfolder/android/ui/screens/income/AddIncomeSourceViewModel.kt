@@ -52,6 +52,17 @@ class AddIncomeSourceViewModel @Inject constructor(
     private val _state = MutableStateFlow(AddIncomeSourceFormState())
     val state: StateFlow<AddIncomeSourceFormState> = _state.asStateFlow()
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     */
+    fun resetForm() {
+        _state.value = AddIncomeSourceFormState()
+    }
+
     fun onOriginChange(value: String) = _state.update { it.copy(origin = value) }
     fun onOriginTypeChange(value: String) = _state.update { it.copy(originType = value) }
     fun onDefaultAmountChange(value: String) = _state.update { it.copy(defaultAmount = value) }

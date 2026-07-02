@@ -40,6 +40,14 @@ fun CreateCycleSheet(
 ) {
     val state by viewModel.state.collectAsState()
 
+    // Reset em cada abertura — o hiltViewModel() é compartilhado no
+    // scope da tela pai, então savedSuccessfully/campos ficam poluídos
+    // entre aberturas se não resetarmos. Sheet é create-only (sem
+    // modo edit), então basta resetar sem prefill.
+    LaunchedEffect(Unit) {
+        viewModel.resetForm()
+    }
+
     val labelEmpty = stringResource(R.string.create_cycle_validation_label)
     val endBeforeStart = stringResource(R.string.create_cycle_validation_dates)
     val duplicateStart = stringResource(R.string.create_cycle_error_duplicate_start)

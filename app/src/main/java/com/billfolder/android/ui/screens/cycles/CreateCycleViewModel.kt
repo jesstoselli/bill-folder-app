@@ -47,6 +47,21 @@ class CreateCycleViewModel @Inject constructor(
     private val _state = MutableStateFlow(CreateCycleFormState())
     val state: StateFlow<CreateCycleFormState> = _state.asStateFlow()
 
+    /**
+     * Reseta o form pros valores iniciais. Chamado pelo sheet toda vez
+     * que abre (via LaunchedEffect(Unit)) porque o hiltViewModel() é
+     * compartilhado entre aberturas — sem esse reset, savedSuccessfully
+     * = true da submissão anterior faria o sheet fechar imediatamente
+     * na 2ª abertura antes do user interagir.
+     *
+     * Bônus: instanciar CreateCycleFormState() de novo re-executa os
+     * defaultXxx() do mês corrente — se o user reabrir num mês diferente
+     * ganha datas/label atualizados.
+     */
+    fun resetForm() {
+        _state.value = CreateCycleFormState()
+    }
+
     fun onStartDateChange(iso: String) = _state.update { it.copy(startDate = iso) }
     fun onEndDateChange(iso: String) = _state.update { it.copy(endDate = iso) }
     fun onLabelChange(value: String) = _state.update { it.copy(label = value) }

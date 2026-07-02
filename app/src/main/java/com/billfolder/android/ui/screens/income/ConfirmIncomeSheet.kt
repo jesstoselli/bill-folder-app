@@ -42,7 +42,12 @@ fun ConfirmIncomeSheet(
 ) {
     val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(entry.id) {
+    // Reset em cada abertura — o hiltViewModel() é compartilhado no
+    // scope da tela pai, então savedSuccessfully/campos ficam poluídos
+    // entre aberturas se não resetarmos. Ordem importa: reset primeiro,
+    // depois initializeFor — senão o reset zeraria o entryId/actualAmount.
+    LaunchedEffect(Unit) {
+        viewModel.resetForm()
         viewModel.initializeFor(entry.id, entry.expectedAmount)
     }
 
