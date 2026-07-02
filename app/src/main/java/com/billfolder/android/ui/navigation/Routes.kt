@@ -8,6 +8,18 @@ object Routes {
     const val LOGIN           = "login"
     const val SIGNUP          = "signup"
     const val HOME            = "home"
+
+    /**
+     * Reset de senha — 2 telas em cadeia:
+     *   forgot-password → user digita email, dispara envio do código
+     *   reset-password?email=... → user digita código + nova senha
+     * O email é passado como arg pro passo 2 não pedir de novo.
+     */
+    const val FORGOT_PASSWORD          = "forgot-password"
+    const val RESET_PASSWORD_PATTERN   = "reset-password?email={email}"
+    const val RESET_PASSWORD_ARG_EMAIL = "email"
+    fun resetPasswordFor(email: String) = "reset-password?email=$email"
+
     const val DAILY_EXPENSES  = "daily-expenses"
     const val EXPENSES        = "expenses"
     const val INCOME          = "income"

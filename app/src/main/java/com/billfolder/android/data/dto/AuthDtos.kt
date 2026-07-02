@@ -54,3 +54,35 @@ data class ApiErrorBody(
     @SerialName("error")   val error: String? = null,
     @SerialName("message") val message: String? = null,
 )
+
+/**
+ * POST /v1/auth/forgot-password. Backend responde 200 SEMPRE
+ * (proteção contra enumeration de usuários — não vaza se o email
+ * está cadastrado). Body devCode só vem preenchido quando o backend
+ * está em modo dev sem provedor de email — em prod é null.
+ */
+@Serializable
+data class ForgotPasswordRequest(
+    @SerialName("email") val email: String,
+)
+
+@Serializable
+data class ForgotPasswordResponse(
+    @SerialName("devCode") val devCode: String? = null,
+)
+
+/**
+ * POST /v1/auth/reset-password. Backend responde 204 em sucesso ou
+ * 400 { error, message } — códigos possíveis do backend:
+ *  - validation_error: senha curta, email inválido, código não é 6 dígitos
+ *  - invalid_reset_code: código não bate / expirou / já foi usado
+ *
+ * Após reset OK, todos os refresh tokens ativos do user são revogados
+ * — sessions em outros devices caem no próximo refresh.
+ */
+@Serializable
+data class ResetPasswordRequest(
+    @SerialName("email")       val email: String,
+    @SerialName("code")        val code: String,
+    @SerialName("newPassword") val newPassword: String,
+)

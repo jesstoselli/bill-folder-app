@@ -1,6 +1,8 @@
 package com.billfolder.android.data.api
 
 import com.billfolder.android.data.dto.AuthResponse
+import com.billfolder.android.data.dto.ForgotPasswordRequest
+import com.billfolder.android.data.dto.ForgotPasswordResponse
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CheckingAccountResponse
@@ -23,6 +25,7 @@ import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
+import com.billfolder.android.data.dto.ResetPasswordRequest
 import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SavingsTransactionResponse
 import com.billfolder.android.data.dto.SignupRequest
@@ -69,6 +72,25 @@ interface BillFolderApi {
 
     @POST("auth/logout")
     suspend fun logout(@Body request: LogoutRequest): Response<Unit>
+
+    /**
+     * Inicia fluxo de reset de senha. Backend sempre retorna 200
+     * (proteção anti-enumeration). devCode no body só vem em dev
+     * sem provider de email; em prod é null.
+     */
+    @POST("auth/forgot-password")
+    suspend fun forgotPassword(
+        @Body request: ForgotPasswordRequest,
+    ): Response<ForgotPasswordResponse>
+
+    /**
+     * Conclui reset. 204 em sucesso, 400 { error, message } em caso
+     * de código inválido/expirado ou validation error.
+     */
+    @POST("auth/reset-password")
+    suspend fun resetPassword(
+        @Body request: ResetPasswordRequest,
+    ): Response<Unit>
 
     // ------------------------------------------------------------------------
     // Home (dashboard agregado)

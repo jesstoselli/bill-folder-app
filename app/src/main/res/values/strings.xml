@@ -61,6 +61,25 @@
     <string name="auth_show_password">mostrar senha</string>
     <string name="auth_hide_password">esconder senha</string>
 
+    <!-- Forgot password (passo 1 de 2) -->
+    <string name="auth_forgot_link">Esqueci minha senha</string>
+    <string name="auth_forgot_title">Esqueceu a senha?</string>
+    <string name="auth_forgot_subtitle">Informe seu e-mail e a gente envia um código de 6 dígitos pra você redefinir a senha.</string>
+    <string name="auth_forgot_cta">Enviar código</string>
+    <string name="auth_forgot_back_prefix">Lembrou?</string>
+    <string name="auth_forgot_back_link">Voltar pro login</string>
+
+    <!-- Reset password (passo 2 de 2) -->
+    <string name="auth_reset_title">Redefinir senha</string>
+    <!-- Subtitle recebe o email como %1$s -->
+    <string name="auth_reset_subtitle">Digite o código que enviamos pra %1$s e escolha uma nova senha.</string>
+    <string name="auth_reset_field_code">Código de 6 dígitos</string>
+    <string name="auth_reset_field_new_password">Nova senha (mínimo 8 caracteres)</string>
+    <string name="auth_reset_field_confirm_password">Confirmar nova senha</string>
+    <string name="auth_reset_cta">Redefinir senha</string>
+    <string name="auth_reset_restart_prefix">Não recebeu o código?</string>
+    <string name="auth_reset_restart_link">Enviar de novo</string>
+
     <!-- Home -->
     <string name="home_section_next_due">próximos</string>
     <string name="home_section_overdue">atrasados</string>

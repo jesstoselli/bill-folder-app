@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -16,9 +15,6 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import com.billfolder.android.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -37,60 +35,58 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.billfolder.android.R
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTextField
 
 /**
- * Tela de login. Container do AuthViewModel + UI stateless via state hoisting.
- * O caller (NavHost) é quem decide o que fazer no onLoginSuccess (navegar pra Home).
+ * "Esqueci minha senha" — passo 1 de 2. Recebe o email do user, dispara
+ * o envio do código e navega pra ResetPasswordScreen passando o email
+ * como argumento pro passo 2 não pedir de novo.
+ *
+ * Não revela se o email existe — o VM sempre marca Sent em qualquer 200
+ * do backend, e a navegação segue mesmo se o email for inválido no banco.
+ * A validação real do código acontece no reset-password (que retorna
+ * "código inválido" tanto pra código errado quanto pra email inexistente).
  */
 @Composable
-fun LoginScreen(
-    onLoginSuccess: () -> Unit,
-    onNavigateToSignup: () -> Unit,
-    onNavigateToForgotPassword: () -> Unit,
-    viewModel: AuthViewModel = hiltViewModel(),
+fun ForgotPasswordScreen(
+    onCodeSent: (email: String) -> Unit,
+    onNavigateBack: () -> Unit,
+    viewModel: ForgotPasswordViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
 
     var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
 
     LaunchedEffect(state) {
-        if (state is AuthUiState.Success) onLoginSuccess()
+        if (state is ForgotPasswordUiState.Sent) {
+            onCodeSent(email.trim())
+        }
     }
 
-    LoginContent(
+    ForgotPasswordContent(
         email = email,
-        password = password,
         onEmailChange = {
             email = it
             viewModel.consumeError()
         },
-        onPasswordChange = {
-            password = it
-            viewModel.consumeError()
-        },
-        onSubmit = { viewModel.login(email, password) },
-        onNavigateToSignup = onNavigateToSignup,
-        onNavigateToForgotPassword = onNavigateToForgotPassword,
+        onSubmit = { viewModel.submit(email) },
+        onNavigateBack = onNavigateBack,
         state = state,
     )
 }
 
 @Composable
-private fun LoginContent(
+private fun ForgotPasswordContent(
     email: String,
-    password: String,
     onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
-    onNavigateToSignup: () -> Unit,
-    onNavigateToForgotPassword: () -> Unit,
-    state: AuthUiState,
+    onNavigateBack: () -> Unit,
+    state: ForgotPasswordUiState,
 ) {
-    val isSubmitting = state is AuthUiState.Submitting
-    val errorMessage = (state as? AuthUiState.Error)?.message
+    val isSubmitting = state is ForgotPasswordUiState.Submitting
+    val errorMessage = (state as? ForgotPasswordUiState.Error)?.message
 
     Box(
         modifier = Modifier
@@ -112,9 +108,16 @@ private fun LoginContent(
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = stringResource(R.string.auth_welcome_back),
+                text = stringResource(R.string.auth_forgot_title),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.auth_forgot_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
             )
 
             Spacer(Modifier.height(40.dp))
@@ -124,25 +127,7 @@ private fun LoginContent(
                 onValueChange = onEmailChange,
                 label = stringResource(R.string.auth_email),
                 keyboardType = KeyboardType.Email,
-                imeAction = ImeAction.Next,
-                enabled = !isSubmitting,
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            BillFolderTextField(
-                value = password,
-                onValueChange = onPasswordChange,
-                label = stringResource(R.string.auth_password),
-                isPassword = true,
                 imeAction = ImeAction.Done,
-                enabled = !isSubmitting,
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            ForgotPasswordLink(
-                onClick = onNavigateToForgotPassword,
                 enabled = !isSubmitting,
             )
 
@@ -157,54 +142,28 @@ private fun LoginContent(
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(28.dp))
 
             BillFolderPrimaryButton(
-                text = stringResource(R.string.auth_login_cta),
+                text = stringResource(R.string.auth_forgot_cta),
                 onClick = onSubmit,
                 loading = isSubmitting,
             )
 
             Spacer(Modifier.height(20.dp))
 
-            SignupLink(
-                onClick = onNavigateToSignup,
+            BackToLoginLink(
+                onClick = onNavigateBack,
                 enabled = !isSubmitting,
             )
         }
     }
 }
 
-/**
- * Link "esqueci minha senha" alinhado à direita, discreto. Aparece
- * entre o campo de senha e o CTA Entrar — posição clássica de forms
- * de login (o user só olha pra ele quando o Entrar já deu erro).
- */
 @Composable
-private fun ForgotPasswordLink(onClick: () -> Unit, enabled: Boolean) {
-    val label = stringResource(R.string.auth_forgot_link)
-    val annotated: AnnotatedString = buildAnnotatedString {
-        withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-            append(label)
-        }
-    }
-
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterEnd,
-    ) {
-        ClickableText(
-            text = annotated,
-            style = MaterialTheme.typography.bodySmall.copy(textAlign = TextAlign.End),
-            onClick = { if (enabled) onClick() },
-        )
-    }
-}
-
-@Composable
-private fun SignupLink(onClick: () -> Unit, enabled: Boolean) {
-    val prefix = stringResource(R.string.auth_no_account_prefix)
-    val link   = stringResource(R.string.auth_no_account_link)
+private fun BackToLoginLink(onClick: () -> Unit, enabled: Boolean) {
+    val prefix = stringResource(R.string.auth_forgot_back_prefix)
+    val link   = stringResource(R.string.auth_forgot_back_link)
     val annotated: AnnotatedString = buildAnnotatedString {
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
             append("$prefix ")

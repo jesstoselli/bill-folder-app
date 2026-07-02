@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -16,9 +15,6 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import com.billfolder.android.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -37,60 +35,78 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.billfolder.android.R
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTextField
 
 /**
- * Tela de login. Container do AuthViewModel + UI stateless via state hoisting.
- * O caller (NavHost) é quem decide o que fazer no onLoginSuccess (navegar pra Home).
+ * "Redefinir senha" — passo 2 de 2. Recebe email da tela anterior (via
+ * SavedStateHandle no VM), pede código + nova senha + confirmação.
+ * Em sucesso, navega pra Login com a expectativa do user re-logar com a
+ * senha nova.
+ *
+ * Campo do email é readonly — user chegou aqui pelo fluxo, não faz
+ * sentido re-editar. Tem CTA "recomeçar" pra voltar pra ForgotPassword
+ * caso ele queira trocar o email ou não recebeu o código.
  */
 @Composable
-fun LoginScreen(
-    onLoginSuccess: () -> Unit,
-    onNavigateToSignup: () -> Unit,
-    onNavigateToForgotPassword: () -> Unit,
-    viewModel: AuthViewModel = hiltViewModel(),
+fun ResetPasswordScreen(
+    onPasswordReset: () -> Unit,
+    onNavigateBack: () -> Unit,
+    viewModel: ResetPasswordViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
 
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     LaunchedEffect(state) {
-        if (state is AuthUiState.Success) onLoginSuccess()
+        if (state is ResetPasswordUiState.Success) onPasswordReset()
     }
 
-    LoginContent(
-        email = email,
-        password = password,
-        onEmailChange = {
-            email = it
+    ResetPasswordContent(
+        email = viewModel.email,
+        code = code,
+        newPassword = newPassword,
+        confirmPassword = confirmPassword,
+        onCodeChange = {
+            // Limita a 6 dígitos e só permite números — evita atrito
+            // no keyboard e faz auto-submit visual (input "cheio").
+            if (it.length <= 6 && it.all { c -> c.isDigit() }) {
+                code = it
+                viewModel.consumeError()
+            }
+        },
+        onNewPasswordChange = {
+            newPassword = it
             viewModel.consumeError()
         },
-        onPasswordChange = {
-            password = it
+        onConfirmPasswordChange = {
+            confirmPassword = it
             viewModel.consumeError()
         },
-        onSubmit = { viewModel.login(email, password) },
-        onNavigateToSignup = onNavigateToSignup,
-        onNavigateToForgotPassword = onNavigateToForgotPassword,
+        onSubmit = { viewModel.submit(code, newPassword, confirmPassword) },
+        onNavigateBack = onNavigateBack,
         state = state,
     )
 }
 
 @Composable
-private fun LoginContent(
+private fun ResetPasswordContent(
     email: String,
-    password: String,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
+    code: String,
+    newPassword: String,
+    confirmPassword: String,
+    onCodeChange: (String) -> Unit,
+    onNewPasswordChange: (String) -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
-    onNavigateToSignup: () -> Unit,
-    onNavigateToForgotPassword: () -> Unit,
-    state: AuthUiState,
+    onNavigateBack: () -> Unit,
+    state: ResetPasswordUiState,
 ) {
-    val isSubmitting = state is AuthUiState.Submitting
-    val errorMessage = (state as? AuthUiState.Error)?.message
+    val isSubmitting = state is ResetPasswordUiState.Submitting
+    val errorMessage = (state as? ResetPasswordUiState.Error)?.message
 
     Box(
         modifier = Modifier
@@ -112,18 +128,25 @@ private fun LoginContent(
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = stringResource(R.string.auth_welcome_back),
+                text = stringResource(R.string.auth_reset_title),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.auth_reset_subtitle, email),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
             )
 
             Spacer(Modifier.height(40.dp))
 
             BillFolderTextField(
-                value = email,
-                onValueChange = onEmailChange,
-                label = stringResource(R.string.auth_email),
-                keyboardType = KeyboardType.Email,
+                value = code,
+                onValueChange = onCodeChange,
+                label = stringResource(R.string.auth_reset_field_code),
+                keyboardType = KeyboardType.NumberPassword,
                 imeAction = ImeAction.Next,
                 enabled = !isSubmitting,
             )
@@ -131,18 +154,22 @@ private fun LoginContent(
             Spacer(Modifier.height(16.dp))
 
             BillFolderTextField(
-                value = password,
-                onValueChange = onPasswordChange,
-                label = stringResource(R.string.auth_password),
+                value = newPassword,
+                onValueChange = onNewPasswordChange,
+                label = stringResource(R.string.auth_reset_field_new_password),
                 isPassword = true,
-                imeAction = ImeAction.Done,
+                imeAction = ImeAction.Next,
                 enabled = !isSubmitting,
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
 
-            ForgotPasswordLink(
-                onClick = onNavigateToForgotPassword,
+            BillFolderTextField(
+                value = confirmPassword,
+                onValueChange = onConfirmPasswordChange,
+                label = stringResource(R.string.auth_reset_field_confirm_password),
+                isPassword = true,
+                imeAction = ImeAction.Done,
                 enabled = !isSubmitting,
             )
 
@@ -157,54 +184,28 @@ private fun LoginContent(
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(28.dp))
 
             BillFolderPrimaryButton(
-                text = stringResource(R.string.auth_login_cta),
+                text = stringResource(R.string.auth_reset_cta),
                 onClick = onSubmit,
                 loading = isSubmitting,
             )
 
             Spacer(Modifier.height(20.dp))
 
-            SignupLink(
-                onClick = onNavigateToSignup,
+            RestartLink(
+                onClick = onNavigateBack,
                 enabled = !isSubmitting,
             )
         }
     }
 }
 
-/**
- * Link "esqueci minha senha" alinhado à direita, discreto. Aparece
- * entre o campo de senha e o CTA Entrar — posição clássica de forms
- * de login (o user só olha pra ele quando o Entrar já deu erro).
- */
 @Composable
-private fun ForgotPasswordLink(onClick: () -> Unit, enabled: Boolean) {
-    val label = stringResource(R.string.auth_forgot_link)
-    val annotated: AnnotatedString = buildAnnotatedString {
-        withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-            append(label)
-        }
-    }
-
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterEnd,
-    ) {
-        ClickableText(
-            text = annotated,
-            style = MaterialTheme.typography.bodySmall.copy(textAlign = TextAlign.End),
-            onClick = { if (enabled) onClick() },
-        )
-    }
-}
-
-@Composable
-private fun SignupLink(onClick: () -> Unit, enabled: Boolean) {
-    val prefix = stringResource(R.string.auth_no_account_prefix)
-    val link   = stringResource(R.string.auth_no_account_link)
+private fun RestartLink(onClick: () -> Unit, enabled: Boolean) {
+    val prefix = stringResource(R.string.auth_reset_restart_prefix)
+    val link   = stringResource(R.string.auth_reset_restart_link)
     val annotated: AnnotatedString = buildAnnotatedString {
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
             append("$prefix ")

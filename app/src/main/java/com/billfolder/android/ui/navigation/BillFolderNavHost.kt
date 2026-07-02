@@ -15,7 +15,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.billfolder.android.ui.components.BillFolderDrawer
 import com.billfolder.android.ui.components.DrawerDestination
+import com.billfolder.android.ui.screens.auth.ForgotPasswordScreen
 import com.billfolder.android.ui.screens.auth.LoginScreen
+import com.billfolder.android.ui.screens.auth.ResetPasswordScreen
 import com.billfolder.android.ui.screens.auth.SignupScreen
 import com.billfolder.android.ui.screens.cards.CardsScreen
 import com.billfolder.android.ui.screens.dailyexpenses.DailyExpensesScreen
@@ -79,6 +81,7 @@ fun BillFolderNavHost(
                 LoginScreen(
                     onLoginSuccess = { navController.navigateClearingAuth() },
                     onNavigateToSignup = { navController.navigate(Routes.SIGNUP) },
+                    onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
                 )
             }
             composable(Routes.SIGNUP) {
@@ -86,6 +89,44 @@ fun BillFolderNavHost(
                     onSignupSuccess = { navController.navigateClearingAuth() },
                     onNavigateToLogin = {
                         navController.popBackStack(Routes.LOGIN, inclusive = false)
+                    },
+                )
+            }
+            composable(Routes.FORGOT_PASSWORD) {
+                ForgotPasswordScreen(
+                    onCodeSent = { email ->
+                        // Empurra reset-password?email=... por cima. Manter
+                        // ForgotPasswordScreen no back stack pra user poder
+                        // voltar caso digite o email errado.
+                        navController.navigate(Routes.resetPasswordFor(email))
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack(Routes.LOGIN, inclusive = false)
+                    },
+                )
+            }
+            composable(
+                route = Routes.RESET_PASSWORD_PATTERN,
+                arguments = listOf(
+                    navArgument(Routes.RESET_PASSWORD_ARG_EMAIL) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) {
+                ResetPasswordScreen(
+                    onPasswordReset = {
+                        // Reset OK: pula direto pra Login, limpando o fluxo
+                        // de reset do back stack. User loga com a senha nova.
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    },
+                    onNavigateBack = {
+                        // "recomeçar" — volta pra ForgotPassword pra digitar
+                        // email de novo (ex: se não recebeu o código).
+                        navController.popBackStack(Routes.FORGOT_PASSWORD, inclusive = false)
                     },
                 )
             }
