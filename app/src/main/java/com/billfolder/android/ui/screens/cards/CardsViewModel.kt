@@ -9,6 +9,7 @@ import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.repository.CardsRepository
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.ui.navigation.Routes
+import com.billfolder.android.ui.util.computeStatementForPurchase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -236,22 +237,42 @@ class CardsViewModel @Inject constructor(
 }
 
 /**
- * Filtra entries do cartão selecionado E dentro do ciclo atual.
- * Critério: purchaseDate dentro de [cycle.startDate, cycle.endDate].
+ * Filtra entries do cartão selecionado que compõem a fatura vencendo
+ * dentro do ciclo BillFolder atual.
  *
- * Nota: parcelamento. Uma compra de R$ 600 em 6x feita no ciclo atual
- * aparece UMA VEZ aqui (a entry), mesmo que as parcelas se distribuam
- * em 6 statements futuros. Faz sentido pra "compras feitas com esse
- * cartão nesse mês".
+ * Semântica: "quais compras estou pagando esse mês pelo cartão X?"
+ * (opção B do design). Isso respeita o closingDay do cartão — se o
+ * cartão fecha dia 17 e o ciclo BillFolder é maio (01/mai → 31/mai),
+ * as entries visíveis são as compras de 18/abr → 17/mai (fatura que
+ * vence em maio via dueDay).
+ *
+ * Antes filtrava por purchaseDate dentro do ciclo — o que ignorava
+ * o closingDay e agrupava compras erradas (a compra de dia 18/mai
+ * aparecia como "no ciclo de maio" quando na verdade vai pra fatura
+ * de junho, que só vence e afeta o ciclo BillFolder de junho).
+ *
+ * Nota parcelamento: uma compra de R$ 600 em 6x aparece UMA VEZ, na
+ * fatura da 1ª parcela. Parcelas 2..6 estão em faturas futuras e são
+ * visíveis nos ciclos BillFolder correspondentes. Faz sentido: cada
+ * ciclo vê o que veio pela primeira vez naquela fatura.
  */
 fun CardsUiState.Content.entriesForSelectedCard(): List<CardEntryResponse> {
-    val start = LocalDate.parse(cycle.startDate)
-    val end = LocalDate.parse(cycle.endDate)
+    val card = cards.firstOrNull { it.id == selectedCardId } ?: return emptyList()
+    val cycleStart = LocalDate.parse(cycle.startDate)
+    val cycleEnd = LocalDate.parse(cycle.endDate)
+
     return allEntries
         .filter { it.cardId == selectedCardId }
-        .filter {
-            val date = runCatching { LocalDate.parse(it.purchaseDate) }.getOrNull()
-            date != null && date >= start && date <= end
+        .filter { entry ->
+            val purchase = runCatching { LocalDate.parse(entry.purchaseDate) }.getOrNull()
+                ?: return@filter false
+            val statement = computeStatementForPurchase(
+                purchaseDate = purchase,
+                closingDay = card.closingDay,
+                dueDay = card.dueDay,
+            )
+            // Fatura desta compra vence dentro do ciclo BillFolder atual?
+            statement.dueDate in cycleStart..cycleEnd
         }
         .sortedByDescending { it.purchaseDate }
 }
