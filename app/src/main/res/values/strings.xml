@@ -174,6 +174,10 @@
          ou "Tênis Nike (2/6) · 23 de mar." quando parcelada -->
     <string name="cards_entry_subtitle_format">%1$s · %2$s</string>
     <string name="cards_entry_installments_format">%1$s (%2$dx)</string>
+    <!-- ex: "Karoline Miranda (1/4)" — parcela X de Y numa fatura específica.
+         Diferente do _installments_format (que é "(4x)" = total de parcelas), aqui
+         indicamos QUAL parcela dentro do total, exibida na fatura correspondente. -->
+    <string name="cards_installment_progress_format">%1$s (%2$d/%3$d)</string>
 
     <!-- Manage Cards (gerenciar > cartões) -->
     <string name="manage_cards_screen_title">cartões</string>

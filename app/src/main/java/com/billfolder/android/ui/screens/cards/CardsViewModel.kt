@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CreditCardAccountResponse
+import com.billfolder.android.data.dto.EntryInstallmentDto
 import com.billfolder.android.data.repository.CardsRepository
 import com.billfolder.android.ui.navigation.Routes
 import com.billfolder.android.ui.util.StatementPeriod
@@ -281,28 +282,78 @@ fun CardsUiState.Content.currentStatement(): StatementPeriod? {
 }
 
 /**
- * Compras do cartão selecionado que compõem a FATURA atualmente vista.
+ * Row de parcela na fatura — achata a relação (entry → installments) num
+ * item de UI plano. Cada parcela vira uma row separada nas faturas
+ * onde ela vence.
  *
- * Semântica: "quais compras estão nessa fatura?" — filtra entries do
- * cartão selecionado cujo purchaseDate está dentro do período da fatura
- * (periodStart → periodEnd). Isso respeita o closingDay do cartão: se
- * fecha dia 17, uma compra de 18/junho vai pra fatura de JULHO (período
- * 18/jun → 17/jul), e uma de 15/junho vai pra fatura de JUNHO.
+ * Ex: compra "Karoline Miranda R$ 330,76 em 4x" com purchaseDate = 29/abr
+ * e cartão fechando dia 17 gera 4 rows:
+ *  - maio/2026:  Karoline Miranda (1/4) R$ 82,69
+ *  - junho/2026: Karoline Miranda (2/4) R$ 82,69
+ *  - julho/2026: Karoline Miranda (3/4) R$ 82,69
+ *  - agosto/2026: Karoline Miranda (4/4) R$ 82,69
  *
- * Nota parcelamento: uma compra em 6x aparece UMA VEZ na fatura da 1ª
- * parcela. Parcelas 2..6 estão em faturas futuras (cada uma com sua
- * própria purchaseDate no backend). Faz sentido: cada fatura vê o que
- * veio pela primeira vez nela.
+ * entryId aponta pro CardEntry pai — usado pelo swipe-to-delete/edit,
+ * porque o backend deleta a compra INTEIRA (e todas as installments
+ * associadas). Editar 1 parcela isolada também não faz sentido.
  */
-fun CardsUiState.Content.entriesForSelectedCard(): List<CardEntryResponse> {
+data class CardInstallmentDisplay(
+    val entryId: String,
+    val installmentId: String,
+    val cardId: String,
+    val label: String,
+    val categoryName: String,
+    val purchaseDate: String,
+    val amount: Double,
+    val installmentNumber: Int,
+    val installmentsCount: Int,
+)
+
+/**
+ * Parcelas do cartão selecionado que vencem na FATURA atualmente vista.
+ *
+ * Semântica: "quais parcelas estão nessa fatura?" — flat map das entries
+ * do cartão pras suas installments, filtrando pelo `statementDueDate`
+ * bater com a `dueDate` da fatura sendo vista.
+ *
+ * Backend é source of truth: cada `EntryInstallmentDto` já tem
+ * `statementDueDate` calculada pelo servidor (baseada no closingDay/
+ * dueDay do cartão no momento em que a compra foi criada). Não
+ * recomputamos — só matcheamos.
+ *
+ * Comparação por string ISO ("yyyy-MM-dd") é segura porque ambos os
+ * lados usam a mesma representação DateOnly.
+ */
+fun CardsUiState.Content.installmentsForSelectedStatement(): List<CardInstallmentDisplay> {
     val statement = currentStatement() ?: return emptyList()
+    val statementDueIso = statement.dueDate.toString()
 
     return allEntries
+        .asSequence()
         .filter { it.cardId == selectedCardId }
-        .filter { entry ->
-            val purchase = runCatching { LocalDate.parse(entry.purchaseDate) }.getOrNull()
-                ?: return@filter false
-            purchase in statement.periodStart..statement.periodEnd
-        }
-        .sortedByDescending { it.purchaseDate }
+        .flatMap { entry -> entry.installments.map { entry to it } }
+        .filter { (_, inst) -> inst.statementDueDate == statementDueIso }
+        .map { (entry, inst) -> entry.toInstallmentDisplay(inst) }
+        // Ordem: parcelas mais antigas (por purchaseDate) primeiro dentro
+        // da mesma fatura. Se duas parcelas caem no mesmo dia (mesma compra),
+        // ordenamos por installmentNumber pra estabilidade visual.
+        .sortedWith(
+            compareByDescending<CardInstallmentDisplay> { it.purchaseDate }
+                .thenBy { it.installmentNumber },
+        )
+        .toList()
 }
+
+private fun CardEntryResponse.toInstallmentDisplay(
+    installment: EntryInstallmentDto,
+): CardInstallmentDisplay = CardInstallmentDisplay(
+    entryId = id,
+    installmentId = installment.installmentId,
+    cardId = cardId,
+    label = label,
+    categoryName = categoryName,
+    purchaseDate = purchaseDate,
+    amount = installment.amount,
+    installmentNumber = installment.installmentNumber,
+    installmentsCount = installmentsCount,
+)

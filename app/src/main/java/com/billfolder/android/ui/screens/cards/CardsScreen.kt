@@ -52,7 +52,7 @@ import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.cards.components.AddCardChip
 import com.billfolder.android.ui.screens.cards.components.CardCarouselChip
-import com.billfolder.android.ui.screens.cards.components.CardEntryRow
+import com.billfolder.android.ui.screens.cards.components.CardInstallmentRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
 import com.billfolder.android.ui.util.ptBrMonthYearOf
@@ -198,8 +198,11 @@ private fun Content(
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
 ) {
-    val entries = state.entriesForSelectedCard()
-    val total = entries.sumOf { it.totalAmount }
+    // Achata entries → installments filtradas pela fatura atual. Total é
+    // a soma das parcelas dessa fatura (não do totalAmount da compra) —
+    // reflete o que o user vai efetivamente pagar quando essa fatura vencer.
+    val installments = state.installmentsForSelectedStatement()
+    val total = installments.sumOf { it.amount }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -242,17 +245,23 @@ private fun Content(
             )
         }
 
-        if (entries.isEmpty()) {
+        if (installments.isEmpty()) {
             item { NoEntriesState() }
         } else {
-            items(entries, key = { it.id }) { entry ->
+            items(installments, key = { it.installmentId }) { installment ->
+                // Swipe-delete/edit atua na COMPRA (entry) inteira — parcelas
+                // isoladas não podem ser deletadas ou editadas separadamente.
+                // Resolvemos o entry pai a partir do installment.entryId; se
+                // não achar (state fora de sync, raro), pula a row.
+                val parentEntry = state.allEntries.firstOrNull { it.id == installment.entryId }
+                    ?: return@items
                 SwipeToActionRow(
-                    isPending = state.pendingDelete?.id == entry.id ||
-                        state.editing?.id == entry.id,
-                    onDelete = { onRequestDeleteEntry(entry) },
-                    onEdit = { onRequestEditEntry(entry) },
+                    isPending = state.pendingDelete?.id == parentEntry.id ||
+                        state.editing?.id == parentEntry.id,
+                    onDelete = { onRequestDeleteEntry(parentEntry) },
+                    onEdit = { onRequestEditEntry(parentEntry) },
                 ) {
-                    CardEntryRow(entry = entry)
+                    CardInstallmentRow(installment = installment)
                 }
             }
         }

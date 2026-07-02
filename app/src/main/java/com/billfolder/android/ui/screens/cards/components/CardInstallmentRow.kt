@@ -17,25 +17,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.billfolder.android.R
-import com.billfolder.android.data.dto.CardEntryResponse
+import com.billfolder.android.ui.screens.cards.CardInstallmentDisplay
 import com.billfolder.android.ui.theme.MoneyRow
 import com.billfolder.android.ui.util.formatBrl
 import com.billfolder.android.ui.util.formatShortDate
 
 /**
- * Linha de compra no cartão. Mostra label + categoria · data + valor total.
- * Quando parcelada, indica "(Nx)" ao lado do label pra deixar claro que
- * o valor é o total e vai ser pago em N statements diferentes.
+ * Linha de PARCELA na fatura do cartão, mostra uma parcela específica com seu
+ * valor unitário.
+ *
+ * Formato do label:
+ *  - Compra à vista (installmentsCount == 1): "Karoline Miranda"
+ *  - Parcelada: "Karoline Miranda (1/4)" — indica qual parcela dentro
+ *    do total, útil pra user rastrear "essa é a 3ª parcela de 6"
+ *
+ * Valor exibido: valor da PARCELA (installment.amount), não da compra.
  */
 @Composable
-fun CardEntryRow(
-    entry: CardEntryResponse,
+fun CardInstallmentRow(
+    installment: CardInstallmentDisplay,
     modifier: Modifier = Modifier,
 ) {
-    val labelWithInstallments = if (entry.installmentsCount > 1) {
-        stringResource(R.string.cards_entry_installments_format, entry.label, entry.installmentsCount)
+    val labelWithProgress = if (installment.installmentsCount > 1) {
+        stringResource(
+            R.string.cards_installment_progress_format,
+            installment.label,
+            installment.installmentNumber,
+            installment.installmentsCount,
+        )
     } else {
-        entry.label
+        installment.label
     }
 
     Card(
@@ -54,7 +65,7 @@ fun CardEntryRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = labelWithInstallments,
+                    text = labelWithProgress,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -62,15 +73,15 @@ fun CardEntryRow(
                 Text(
                     text = stringResource(
                         R.string.cards_entry_subtitle_format,
-                        entry.categoryName,
-                        formatShortDate(entry.purchaseDate),
+                        installment.categoryName,
+                        formatShortDate(installment.purchaseDate),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
-                text = formatBrl(entry.totalAmount),
+                text = formatBrl(installment.amount),
                 style = MoneyRow,
                 color = MaterialTheme.colorScheme.onSurface,
             )
