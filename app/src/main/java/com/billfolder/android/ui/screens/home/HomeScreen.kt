@@ -55,8 +55,10 @@ import com.billfolder.android.ui.screens.income.AddIncomeEntrySheet
 import com.billfolder.android.ui.screens.savings.AddSavingsTransactionSheet
 import com.billfolder.android.ui.screens.home.components.HomeHeroCard
 import com.billfolder.android.ui.screens.home.components.HomeListRow
+import com.billfolder.android.ui.components.BillFolderPullToRefresh
 import com.billfolder.android.ui.screens.home.components.WhereMoneyGoingCard
 import com.billfolder.android.ui.theme.PillShape
+import com.billfolder.android.ui.util.RefreshOnResume
 
 /**
  * Home V2 — fiel ao wireframe do BillFolder-InventarioTelas v0.1 §5.
@@ -76,6 +78,11 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+
+    // Refresh ao voltar pra Home vindo de outra tela (drawer nav preserva
+    // state via saveState/restoreState — sem esse trigger, novas compras/
+    // pagamentos feitos em outras telas não aparecem no agregado da Home).
+    RefreshOnResume { viewModel.refresh() }
 
     // Sheets disparados pelo Speed Dial. Agora são 5 (avulsa, despesa,
     // recebimento, cartão, poupança). Mantemos um boolean por sheet por
@@ -103,6 +110,7 @@ fun HomeScreen(
         onMenuClick = onMenuClick,
         onAvatarClick = { showLogoutConfirm = true },
         onRefresh = viewModel::refresh,
+        onPullRefresh = viewModel::pullRefresh,
         onCreateCycle = { showCreateCycleSheet = true },
         onSpeedDialDaily = { showAddDailySheet = true },
         onSpeedDialExpense = { showAddExpenseSheet = true },
@@ -203,6 +211,7 @@ private fun HomeScaffold(
     onMenuClick: () -> Unit,
     onAvatarClick: () -> Unit,
     onRefresh: () -> Unit,
+    onPullRefresh: () -> Unit,
     onCreateCycle: () -> Unit,
     onSpeedDialDaily: () -> Unit,
     onSpeedDialExpense: () -> Unit,
@@ -238,6 +247,8 @@ private fun HomeScaffold(
                 )
                 is HomeUiState.Content -> HomeContent(
                     data = s.data,
+                    isRefreshing = s.isRefreshing,
+                    onPullRefresh = onPullRefresh,
                     onPreviousCycle = onPreviousCycle,
                     onNextCycle = onNextCycle,
                 )
@@ -314,6 +325,8 @@ private fun rememberSpeedDialItems(
 @Composable
 private fun HomeContent(
     data: HomeResponse,
+    isRefreshing: Boolean,
+    onPullRefresh: () -> Unit,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
 ) {
@@ -321,6 +334,10 @@ private fun HomeContent(
     val nextDue = collectNextDue(data, cardStatementSubtitle)
     val overdue = collectOverdue(data)
 
+    BillFolderPullToRefresh(
+        isRefreshing = isRefreshing,
+        onRefresh = onPullRefresh,
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -379,6 +396,7 @@ private fun HomeContent(
 
         // Espaço extra no fim pra FAB não cobrir o último item.
         item { Spacer(Modifier.height(80.dp)) }
+    }
     }
 }
 

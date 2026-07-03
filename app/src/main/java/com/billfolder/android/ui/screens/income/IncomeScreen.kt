@@ -47,11 +47,13 @@ import com.billfolder.android.R
 import com.billfolder.android.data.dto.IncomeEntryResponse
 import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
+import com.billfolder.android.ui.components.BillFolderPullToRefresh
 import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.screens.income.components.IncomeEntryRow
 import com.billfolder.android.ui.screens.income.components.IncomeSourceRow
+import com.billfolder.android.ui.util.RefreshOnResume
 import com.billfolder.android.ui.theme.PillShape
 import com.billfolder.android.ui.util.formatBrl
 
@@ -70,6 +72,7 @@ fun IncomeScreen(
     viewModel: IncomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    RefreshOnResume { viewModel.refresh() }
     var showAddSheet by remember { mutableStateOf(false) }
     var showAddSourceSheet by remember { mutableStateOf(false) }
     var confirmingEntry by remember { mutableStateOf<IncomeEntryResponse?>(null) }
@@ -137,6 +140,7 @@ fun IncomeScreen(
                     onRequestEditSource = viewModel::requestEditSource,
                     onPreviousCycle = viewModel::goToPreviousCycle,
                     onNextCycle = viewModel::goToNextCycle,
+                    onPullRefresh = viewModel::pullRefresh,
                 )
             }
         }
@@ -225,6 +229,7 @@ private fun IncomeContent(
     onRequestEditSource: (IncomeSourceResponse) -> Unit,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
+    onPullRefresh: () -> Unit,
 ) {
     val entries = state.entries
     val sources = state.sources
@@ -239,6 +244,10 @@ private fun IncomeContent(
         .filter { it.status.equals("received", ignoreCase = true) }
         .sumOf { it.actualAmount ?: it.expectedAmount }
 
+    BillFolderPullToRefresh(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onPullRefresh,
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -347,6 +356,7 @@ private fun IncomeContent(
         }
 
         item { Spacer(Modifier.height(80.dp)) }
+    }
     }
 }
 

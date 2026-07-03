@@ -1,5 +1,6 @@
 package com.billfolder.android.ui.screens.dailyexpenses
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CycleResponse
@@ -7,6 +8,7 @@ import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.DailyExpensesRepository
 import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.observeDrawerRefresh
 import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,12 +49,15 @@ sealed interface DailyExpensesUiState {
         val cycles: List<CycleResponse> = emptyList(),
         /** true durante refetch do ciclo prev/next — bloqueia tap-spam. */
         val isSwitchingCycle: Boolean = false,
+        /** true durante pull-to-refresh — mantém dados visíveis. */
+        val isRefreshing: Boolean = false,
     ) : DailyExpensesUiState
     data class Error(val message: String) : DailyExpensesUiState
 }
 
 @HiltViewModel
 class DailyExpensesViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val cyclesRepository: CyclesRepository,
     private val dailyExpensesRepository: DailyExpensesRepository,
 ) : ViewModel() {
@@ -62,12 +67,43 @@ class DailyExpensesViewModel @Inject constructor(
 
     init {
         load()
+        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
     }
 
     fun refresh() {
         if (_state.value is DailyExpensesUiState.Loading) return
         _state.value = DailyExpensesUiState.Loading
         load()
+    }
+
+    /** Pull-to-refresh: refetch sem apagar a tela. */
+    fun pullRefresh() {
+        val current = _state.value
+        if (current !is DailyExpensesUiState.Content) {
+            refresh()
+            return
+        }
+        _state.update { (it as? DailyExpensesUiState.Content)?.copy(isRefreshing = true) ?: it }
+        viewModelScope.launch {
+            try {
+                val cycle = cyclesRepository.getCurrent()
+                val expenses = dailyExpensesRepository.list(
+                    from = cycle.startDate,
+                    to = cycle.endDate,
+                )
+                val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
+                _state.update {
+                    (it as? DailyExpensesUiState.Content)?.copy(
+                        cycle = cycle,
+                        expenses = expenses.sortedByDescending { it.date },
+                        cycles = cycles,
+                        isRefreshing = false,
+                    ) ?: it
+                }
+            } catch (e: Exception) {
+                _state.update { (it as? DailyExpensesUiState.Content)?.copy(isRefreshing = false) ?: it }
+            }
+        }
     }
 
     // ------------------------------------------------------------------------

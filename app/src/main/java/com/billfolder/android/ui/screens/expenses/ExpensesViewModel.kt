@@ -1,5 +1,6 @@
 package com.billfolder.android.ui.screens.expenses
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CycleResponse
@@ -7,6 +8,7 @@ import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.ExpensesRepository
 import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.observeDrawerRefresh
 import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,12 +49,14 @@ sealed interface ExpensesUiState {
         val deletingId: String? = null,
         val cycles: List<CycleResponse> = emptyList(),
         val isSwitchingCycle: Boolean = false,
+        val isRefreshing: Boolean = false,
     ) : ExpensesUiState
     data class Error(val message: String) : ExpensesUiState
 }
 
 @HiltViewModel
 class ExpensesViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val cyclesRepository: CyclesRepository,
     private val expensesRepository: ExpensesRepository,
 ) : ViewModel() {
@@ -62,12 +66,40 @@ class ExpensesViewModel @Inject constructor(
 
     init {
         load()
+        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
     }
 
     fun refresh() {
         if (_state.value is ExpensesUiState.Loading) return
         _state.value = ExpensesUiState.Loading
         load()
+    }
+
+    /** Pull-to-refresh: refetch sem apagar a tela. */
+    fun pullRefresh() {
+        val current = _state.value
+        if (current !is ExpensesUiState.Content) {
+            refresh()
+            return
+        }
+        _state.update { (it as? ExpensesUiState.Content)?.copy(isRefreshing = true) ?: it }
+        viewModelScope.launch {
+            try {
+                val cycle = cyclesRepository.getCurrent()
+                val expenses = expensesRepository.list(from = cycle.startDate, to = cycle.endDate)
+                val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
+                _state.update {
+                    (it as? ExpensesUiState.Content)?.copy(
+                        cycle = cycle,
+                        expenses = expenses.sortedBy { it.dueDate },
+                        cycles = cycles,
+                        isRefreshing = false,
+                    ) ?: it
+                }
+            } catch (e: Exception) {
+                _state.update { (it as? ExpensesUiState.Content)?.copy(isRefreshing = false) ?: it }
+            }
+        }
     }
 
     // ------------------------------------------------------------------------

@@ -48,9 +48,11 @@ import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.dailyexpenses.components.DailyExpenseRow
+import com.billfolder.android.ui.components.BillFolderPullToRefresh
 import com.billfolder.android.ui.screens.dailyexpenses.components.DayHeader
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
+import com.billfolder.android.ui.util.RefreshOnResume
 
 /**
  * Tela "despesas avulsas" — lista das daily expenses no ciclo atual,
@@ -67,6 +69,7 @@ fun DailyExpensesScreen(
     viewModel: DailyExpensesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    RefreshOnResume { viewModel.refresh() }
     var showAddSheet by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -128,6 +131,7 @@ fun DailyExpensesScreen(
                     onRequestEdit = viewModel::requestEdit,
                     onPreviousCycle = viewModel::goToPreviousCycle,
                     onNextCycle = viewModel::goToNextCycle,
+                    onPullRefresh = viewModel::pullRefresh,
                 )
             }
         }
@@ -174,6 +178,7 @@ private fun DailyExpensesContent(
     onRequestEdit: (DailyExpenseResponse) -> Unit,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
+    onPullRefresh: () -> Unit,
 ) {
     val expenses = state.expenses
     val total = expenses.sumOf { it.amount }
@@ -181,6 +186,10 @@ private fun DailyExpensesContent(
     // a lista vem ordenada do VM).
     val byDay: Map<String, List<DailyExpenseResponse>> = expenses.groupBy { it.date }
 
+    BillFolderPullToRefresh(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onPullRefresh,
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -228,6 +237,7 @@ private fun DailyExpensesContent(
 
         // Espaço pro FAB não cobrir o último item.
         item { Spacer(Modifier.height(80.dp)) }
+    }
     }
 }
 

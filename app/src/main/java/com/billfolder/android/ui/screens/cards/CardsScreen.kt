@@ -48,6 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CreditCardAccountResponse
+import com.billfolder.android.ui.components.BillFolderPullToRefresh
 import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.cards.components.AddCardChip
@@ -55,6 +56,7 @@ import com.billfolder.android.ui.screens.cards.components.CardCarouselChip
 import com.billfolder.android.ui.screens.cards.components.CardInstallmentRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
+import com.billfolder.android.ui.util.RefreshOnResume
 import com.billfolder.android.ui.util.ptBrMonthYearOf
 
 /**
@@ -77,6 +79,7 @@ fun CardsScreen(
     viewModel: CardsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    RefreshOnResume { viewModel.refresh() }
     var showAddEntrySheet by remember { mutableStateOf(false) }
     var showAddCardSheet by remember { mutableStateOf(false) }
 
@@ -144,6 +147,7 @@ fun CardsScreen(
                     onRequestEditEntry = viewModel::requestEdit,
                     onPreviousCycle = viewModel::goToPreviousCycle,
                     onNextCycle = viewModel::goToNextCycle,
+                    onPullRefresh = viewModel::pullRefresh,
                 )
             }
         }
@@ -197,6 +201,7 @@ private fun Content(
     onRequestEditEntry: (com.billfolder.android.data.dto.CardEntryResponse) -> Unit,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
+    onPullRefresh: () -> Unit,
 ) {
     // Achata entries → installments filtradas pela fatura atual. Total é
     // a soma das parcelas dessa fatura (não do totalAmount da compra) —
@@ -204,6 +209,10 @@ private fun Content(
     val installments = state.installmentsForSelectedStatement()
     val total = installments.sumOf { it.amount }
 
+    BillFolderPullToRefresh(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onPullRefresh,
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -267,6 +276,7 @@ private fun Content(
         }
 
         item { Spacer(Modifier.height(80.dp)) }
+    }
     }
 }
 

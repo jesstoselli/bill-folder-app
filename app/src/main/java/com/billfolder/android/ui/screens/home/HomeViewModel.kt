@@ -1,5 +1,6 @@
 package com.billfolder.android.ui.screens.home
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CycleResponse
@@ -9,6 +10,7 @@ import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.HomeRepository
 import com.billfolder.android.data.repository.SavingsRepository
 import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.observeDrawerRefresh
 import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +54,12 @@ sealed interface HomeUiState {
          * troco pro HomeUiState.Loading porque isso apaga a tela inteira.
          */
         val isSwitchingCycle: Boolean = false,
+        /**
+         * true durante pull-to-refresh. Diferente de switch pra
+         * HomeUiState.Loading (que apaga a tela toda), este flag mantém
+         * dados visíveis e mostra só o spinner do PullToRefreshBox.
+         */
+        val isRefreshing: Boolean = false,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
     /** Ciclo ainda não criado pelo usuário — backend retorna 404/erro específico. */
@@ -60,6 +68,7 @@ sealed interface HomeUiState {
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val homeRepository: HomeRepository,
     private val authRepository: AuthRepository,
     private val savingsRepository: SavingsRepository,
@@ -71,12 +80,48 @@ class HomeViewModel @Inject constructor(
 
     init {
         load()
+        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
     }
 
     fun refresh() {
         if (_state.value is HomeUiState.Loading) return
         _state.value = HomeUiState.Loading
         load()
+    }
+
+    /**
+     * Pull-to-refresh — refresca SEM apagar a tela. Se o state já é
+     * Content, marca isRefreshing = true, refaz o fetch e no fim desliga
+     * o flag. Se o state é Error/NoCycle/Loading, delega pra refresh()
+     * normal (troca tudo pra Loading).
+     */
+    fun pullRefresh() {
+        val current = _state.value
+        if (current !is HomeUiState.Content) {
+            refresh()
+            return
+        }
+        _state.update { (it as? HomeUiState.Content)?.copy(isRefreshing = true) ?: it }
+        viewModelScope.launch {
+            try {
+                val home = homeRepository.getHome()
+                val hasSavings = runCatching {
+                    savingsRepository.listAccounts().isNotEmpty()
+                }.getOrDefault(false)
+                val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
+                _state.update {
+                    (it as? HomeUiState.Content)?.copy(
+                        data = home,
+                        hasAnySavingsAccount = hasSavings,
+                        cycles = cycles,
+                        isRefreshing = false,
+                    ) ?: it
+                }
+            } catch (e: Exception) {
+                // Mantém os dados atuais; só desliga o spinner.
+                _state.update { (it as? HomeUiState.Content)?.copy(isRefreshing = false) ?: it }
+            }
+        }
     }
 
     fun logout(onDone: () -> Unit) {

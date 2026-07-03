@@ -10,6 +10,7 @@ import com.billfolder.android.data.repository.CardsRepository
 import com.billfolder.android.ui.navigation.Routes
 import com.billfolder.android.ui.util.StatementPeriod
 import com.billfolder.android.ui.util.computeStatementForPurchase
+import com.billfolder.android.ui.util.observeDrawerRefresh
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -77,6 +78,7 @@ sealed interface CardsUiState {
         val pendingDelete: CardEntryResponse? = null,
         val editing: CardEntryResponse? = null,
         val deletingId: String? = null,
+        val isRefreshing: Boolean = false,
     ) : CardsUiState
     data class Error(val message: String) : CardsUiState
 }
@@ -101,12 +103,44 @@ class CardsViewModel @Inject constructor(
 
     init {
         load()
+        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
     }
 
     fun refresh() {
         if (_state.value is CardsUiState.Loading) return
         _state.value = CardsUiState.Loading
         load()
+    }
+
+    /** Pull-to-refresh: refetch cards+entries sem apagar a tela. */
+    fun pullRefresh() {
+        val current = _state.value
+        if (current !is CardsUiState.Content) {
+            refresh()
+            return
+        }
+        _state.update { (it as? CardsUiState.Content)?.copy(isRefreshing = true) ?: it }
+        viewModelScope.launch {
+            try {
+                val (cards, entries) = coroutineScope {
+                    val c = async { cardsRepository.listCards() }
+                    val e = async { cardsRepository.listEntries() }
+                    awaitAll(c, e).let {
+                        @Suppress("UNCHECKED_CAST")
+                        Pair(it[0] as List<CreditCardAccountResponse>, it[1] as List<CardEntryResponse>)
+                    }
+                }
+                _state.update {
+                    (it as? CardsUiState.Content)?.copy(
+                        cards = cards,
+                        allEntries = entries,
+                        isRefreshing = false,
+                    ) ?: it
+                }
+            } catch (e: Exception) {
+                _state.update { (it as? CardsUiState.Content)?.copy(isRefreshing = false) ?: it }
+            }
+        }
     }
 
     /** Trocar de cartão no carousel — só muda o ID selecionado. */

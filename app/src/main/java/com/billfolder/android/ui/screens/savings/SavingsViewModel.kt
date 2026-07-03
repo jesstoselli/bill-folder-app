@@ -11,6 +11,7 @@ import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.SavingsRepository
 import com.billfolder.android.ui.navigation.Routes
 import com.billfolder.android.ui.util.CycleDirection
+import com.billfolder.android.ui.util.observeDrawerRefresh
 import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -76,6 +77,7 @@ sealed interface SavingsUiState {
         val deletingId: String? = null,
         val cycles: List<CycleResponse> = emptyList(),
         val isSwitchingCycle: Boolean = false,
+        val isRefreshing: Boolean = false,
     ) : SavingsUiState
     data class Error(val message: String) : SavingsUiState
 }
@@ -102,12 +104,55 @@ class SavingsViewModel @Inject constructor(
 
     init {
         load()
+        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
     }
 
     fun refresh() {
         if (_state.value is SavingsUiState.Loading) return
         _state.value = SavingsUiState.Loading
         load()
+    }
+
+    /** Pull-to-refresh: refetch accounts+transactions sem apagar a tela. */
+    fun pullRefresh() {
+        val current = _state.value
+        if (current !is SavingsUiState.Content) {
+            refresh()
+            return
+        }
+        _state.update { (it as? SavingsUiState.Content)?.copy(isRefreshing = true) ?: it }
+        viewModelScope.launch {
+            try {
+                val cycle = cyclesRepository.getCurrent()
+                val (accounts, transactions) = coroutineScope {
+                    val a = async { savingsRepository.listAccounts() }
+                    val t = async {
+                        savingsRepository.listTransactions(
+                            savingsAccountId = null,
+                            from = cycle.startDate,
+                            to = cycle.endDate,
+                            type = null,
+                        )
+                    }
+                    awaitAll(a, t).let {
+                        @Suppress("UNCHECKED_CAST")
+                        Pair(it[0] as List<SavingsAccountResponse>, it[1] as List<SavingsTransactionResponse>)
+                    }
+                }
+                val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
+                _state.update {
+                    (it as? SavingsUiState.Content)?.copy(
+                        cycle = cycle,
+                        accounts = accounts,
+                        allTransactions = transactions,
+                        cycles = cycles,
+                        isRefreshing = false,
+                    ) ?: it
+                }
+            } catch (e: Exception) {
+                _state.update { (it as? SavingsUiState.Content)?.copy(isRefreshing = false) ?: it }
+            }
+        }
     }
 
     /** Trocar de poupança no carousel — só muda o ID selecionado. */

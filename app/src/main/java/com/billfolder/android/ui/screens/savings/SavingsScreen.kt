@@ -48,6 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SavingsTransactionResponse
+import com.billfolder.android.ui.components.BillFolderPullToRefresh
 import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
@@ -56,6 +57,7 @@ import com.billfolder.android.ui.screens.savings.components.AddSavingsChip
 import com.billfolder.android.ui.screens.savings.components.SavingsAccountCarouselChip
 import com.billfolder.android.ui.screens.savings.components.SavingsTransactionRow
 import com.billfolder.android.ui.theme.PillShape
+import com.billfolder.android.ui.util.RefreshOnResume
 import com.billfolder.android.ui.util.formatBrl
 
 /**
@@ -91,6 +93,7 @@ fun SavingsScreen(
     viewModel: SavingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    RefreshOnResume { viewModel.refresh() }
     var showAddTransactionSheet by remember { mutableStateOf(false) }
     var showAddAccountSheet by remember { mutableStateOf(false) }
 
@@ -160,6 +163,7 @@ fun SavingsScreen(
                     onRequestEditTransaction = viewModel::requestEdit,
                     onPreviousCycle = viewModel::goToPreviousCycle,
                     onNextCycle = viewModel::goToNextCycle,
+                    onPullRefresh = viewModel::pullRefresh,
                 )
             }
         }
@@ -223,10 +227,15 @@ private fun Content(
     onRequestEditTransaction: (SavingsTransactionResponse) -> Unit,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
+    onPullRefresh: () -> Unit,
 ) {
     val transactions = state.transactionsForSelectedAccount()
     val netFlow = state.netFlowForSelectedAccount()
 
+    BillFolderPullToRefresh(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onPullRefresh,
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -279,6 +288,7 @@ private fun Content(
         }
 
         item { Spacer(Modifier.height(80.dp)) }
+    }
     }
 }
 
