@@ -71,4 +71,23 @@ class RepositoryNotifyTest {
         assertTrue(threw)
         assertEquals(before, notifier.changes.value)
     }
+
+    @Test
+    fun `delete de ajuste que falha lanca e NAO dispara o bump`() = runTest {
+        // Endpoint retorna Response<Unit>: um 500 NÃO lança sozinho no Retrofit,
+        // então o repo precisa checar isSuccessful (como os demais). Senão a
+        // falha é engolida E o bus dispara indevidamente.
+        api.deleteResult = Response.error(500, okhttp3.ResponseBody.create(null, ""))
+        val before = notifier.changes.value
+
+        var threw = false
+        try {
+            CycleAdjustmentsRepository(api, notifier).delete("x")
+        } catch (e: HttpException) {
+            threw = true
+        }
+
+        assertTrue(threw)
+        assertEquals(before, notifier.changes.value)
+    }
 }

@@ -35,6 +35,9 @@ class CycleAdjustmentsRepository @Inject constructor(
         notifier.notifyingOnSuccess { api.updateCycleAdjustment(id, request) }
 
     suspend fun delete(id: String) = notifier.notifyingOnSuccess {
-        api.deleteCycleAdjustment(id)
+        val response = api.deleteCycleAdjustment(id)
+        if (!response.isSuccessful) {
+            throw retrofit2.HttpException(response)
+        }
     }
 }
