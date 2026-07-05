@@ -58,7 +58,6 @@ import com.billfolder.android.ui.screens.home.components.HomeListRow
 import com.billfolder.android.ui.components.BillFolderPullToRefresh
 import com.billfolder.android.ui.screens.home.components.WhereMoneyGoingCard
 import com.billfolder.android.ui.theme.PillShape
-import com.billfolder.android.ui.util.RefreshOnResume
 
 /**
  * Home V2 — fiel ao wireframe do BillFolder-InventarioTelas v0.1 §5.
@@ -78,11 +77,6 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-
-    // Refresh ao voltar pra Home vindo de outra tela (drawer nav preserva
-    // state via saveState/restoreState — sem esse trigger, novas compras/
-    // pagamentos feitos em outras telas não aparecem no agregado da Home).
-    RefreshOnResume { viewModel.refresh() }
 
     // Sheets disparados pelo Speed Dial. Agora são 5 (avulsa, despesa,
     // recebimento, cartão, poupança). Mantemos um boolean por sheet por

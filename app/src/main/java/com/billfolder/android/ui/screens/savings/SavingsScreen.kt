@@ -57,7 +57,6 @@ import com.billfolder.android.ui.screens.savings.components.AddSavingsChip
 import com.billfolder.android.ui.screens.savings.components.SavingsAccountCarouselChip
 import com.billfolder.android.ui.screens.savings.components.SavingsTransactionRow
 import com.billfolder.android.ui.theme.PillShape
-import com.billfolder.android.ui.util.RefreshOnResume
 import com.billfolder.android.ui.util.formatBrl
 
 /**
@@ -93,7 +92,6 @@ fun SavingsScreen(
     viewModel: SavingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    RefreshOnResume { viewModel.refresh() }
     var showAddTransactionSheet by remember { mutableStateOf(false) }
     var showAddAccountSheet by remember { mutableStateOf(false) }
 

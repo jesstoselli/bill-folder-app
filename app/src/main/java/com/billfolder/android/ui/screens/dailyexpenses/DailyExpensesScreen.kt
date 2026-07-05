@@ -52,7 +52,6 @@ import com.billfolder.android.ui.components.BillFolderPullToRefresh
 import com.billfolder.android.ui.screens.dailyexpenses.components.DayHeader
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
-import com.billfolder.android.ui.util.RefreshOnResume
 
 /**
  * Tela "despesas avulsas" — lista das daily expenses no ciclo atual,
@@ -69,7 +68,6 @@ fun DailyExpensesScreen(
     viewModel: DailyExpensesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    RefreshOnResume { viewModel.refresh() }
     var showAddSheet by remember { mutableStateOf(false) }
 
     Scaffold(

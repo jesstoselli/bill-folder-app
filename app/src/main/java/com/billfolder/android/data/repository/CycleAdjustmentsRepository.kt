@@ -4,6 +4,8 @@ import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.CreateCycleAdjustmentRequest
 import com.billfolder.android.data.dto.CycleAdjustmentResponse
 import com.billfolder.android.data.dto.UpdateCycleAdjustmentRequest
+import com.billfolder.android.data.sync.DataChangeNotifier
+import com.billfolder.android.data.sync.notifyingOnSuccess
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,6 +19,7 @@ import javax.inject.Singleton
 @Singleton
 class CycleAdjustmentsRepository @Inject constructor(
     private val api: BillFolderApi,
+    private val notifier: DataChangeNotifier,
 ) {
     /** Lista ajustes filtrados por data (janela do ciclo) e tipo opcional. */
     suspend fun list(
@@ -26,12 +29,12 @@ class CycleAdjustmentsRepository @Inject constructor(
     ): List<CycleAdjustmentResponse> = api.getCycleAdjustments(from, to, type)
 
     suspend fun create(request: CreateCycleAdjustmentRequest): CycleAdjustmentResponse =
-        api.createCycleAdjustment(request)
+        notifier.notifyingOnSuccess { api.createCycleAdjustment(request) }
 
     suspend fun update(id: String, request: UpdateCycleAdjustmentRequest): CycleAdjustmentResponse =
-        api.updateCycleAdjustment(id, request)
+        notifier.notifyingOnSuccess { api.updateCycleAdjustment(id, request) }
 
-    suspend fun delete(id: String) {
+    suspend fun delete(id: String) = notifier.notifyingOnSuccess {
         api.deleteCycleAdjustment(id)
     }
 }

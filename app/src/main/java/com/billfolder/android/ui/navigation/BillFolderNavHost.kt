@@ -29,7 +29,6 @@ import com.billfolder.android.ui.screens.managebanks.ManageBanksScreen
 import com.billfolder.android.ui.screens.managecards.ManageCardsScreen
 import com.billfolder.android.ui.screens.managesavings.ManageSavingsScreen
 import com.billfolder.android.ui.screens.savings.SavingsScreen
-import com.billfolder.android.ui.util.DRAWER_REFRESH_TRIGGER_KEY
 import kotlinx.coroutines.launch
 
 /**
@@ -254,20 +253,10 @@ private fun NavHostController.navigateFromDrawer(destination: DrawerDestination)
         launchSingleTop = true
         restoreState = true
     }
-    // Sinaliza refresh pra tela alvo — a cada clique no drawer, um timestamp
-    // novo é gravado em savedStateHandle. VMs observam via
-    // observeDrawerRefresh() e chamam pullRefresh(). Necessário porque com
-    // restoreState=true o VM é retido e init { load() } não roda de novo,
-    // deixando dados desatualizados.
-    //
-    // Usamos currentBackStackEntry ao invés de getBackStackEntry(route)
-    // porque o `route` pode ter query params (ex: CARDS_PATTERN) que exigem
-    // matching exato. currentBackStackEntry sempre aponta pro entry recém-
-    // navegado (Compose Nav atualiza sincronamente).
-    currentBackStackEntry?.savedStateHandle?.set(
-        DRAWER_REFRESH_TRIGGER_KEY,
-        System.currentTimeMillis(),
-    )
+    // O refresh cross-screen agora é resolvido pelo DataChangeNotifier
+    // global (data/sync): cada write nos repositories sinaliza a mudança e
+    // os VMs de consumo refetcham via observeDataChanges. Não dependemos
+    // mais de acoplar refresh à navegação do drawer.
 }
 
 /**

@@ -9,9 +9,10 @@ import com.billfolder.android.data.dto.SavingsTransactionResponse
 import com.billfolder.android.data.dto.SavingsTransactionTypes
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.SavingsRepository
+import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.ui.navigation.Routes
 import com.billfolder.android.ui.util.CycleDirection
-import com.billfolder.android.ui.util.observeDrawerRefresh
+import com.billfolder.android.ui.util.observeDataChanges
 import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -87,6 +88,7 @@ class SavingsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val savingsRepository: SavingsRepository,
     private val cyclesRepository: CyclesRepository,
+    private val dataChangeNotifier: DataChangeNotifier,
 ) : ViewModel() {
 
     /**
@@ -104,7 +106,7 @@ class SavingsViewModel @Inject constructor(
 
     init {
         load()
-        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
+        observeDataChanges(dataChangeNotifier) { pullRefresh() }
     }
 
     fun refresh() {

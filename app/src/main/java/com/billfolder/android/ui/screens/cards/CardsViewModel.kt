@@ -7,10 +7,11 @@ import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.EntryInstallmentDto
 import com.billfolder.android.data.repository.CardsRepository
+import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.ui.navigation.Routes
 import com.billfolder.android.ui.util.StatementPeriod
 import com.billfolder.android.ui.util.computeStatementForPurchase
-import com.billfolder.android.ui.util.observeDrawerRefresh
+import com.billfolder.android.ui.util.observeDataChanges
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -87,6 +88,7 @@ sealed interface CardsUiState {
 class CardsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val cardsRepository: CardsRepository,
+    private val dataChangeNotifier: DataChangeNotifier,
 ) : ViewModel() {
 
     /**
@@ -103,7 +105,7 @@ class CardsViewModel @Inject constructor(
 
     init {
         load()
-        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
+        observeDataChanges(dataChangeNotifier) { pullRefresh() }
     }
 
     fun refresh() {

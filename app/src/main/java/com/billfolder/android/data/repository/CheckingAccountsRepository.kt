@@ -4,6 +4,8 @@ import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.CheckingAccountResponse
 import com.billfolder.android.data.dto.CreateCheckingAccountRequest
 import com.billfolder.android.data.dto.UpdateCheckingAccountRequest
+import com.billfolder.android.data.sync.DataChangeNotifier
+import com.billfolder.android.data.sync.notifyingOnSuccess
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,19 +27,20 @@ import javax.inject.Singleton
 @Singleton
 class CheckingAccountsRepository @Inject constructor(
     private val api: BillFolderApi,
+    private val notifier: DataChangeNotifier,
 ) {
     suspend fun listAccounts(): List<CheckingAccountResponse> = api.getCheckingAccounts()
 
     suspend fun createAccount(
         request: CreateCheckingAccountRequest,
-    ): CheckingAccountResponse = api.createCheckingAccount(request)
+    ): CheckingAccountResponse = notifier.notifyingOnSuccess { api.createCheckingAccount(request) }
 
     suspend fun updateAccount(
         id: String,
         request: UpdateCheckingAccountRequest,
-    ): CheckingAccountResponse = api.updateCheckingAccount(id, request)
+    ): CheckingAccountResponse = notifier.notifyingOnSuccess { api.updateCheckingAccount(id, request) }
 
-    suspend fun deleteAccount(id: String) {
+    suspend fun deleteAccount(id: String) = notifier.notifyingOnSuccess {
         val response = api.deleteCheckingAccount(id)
         if (!response.isSuccessful) {
             throw retrofit2.HttpException(response)

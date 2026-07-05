@@ -1,6 +1,5 @@
 package com.billfolder.android.ui.screens.income
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CycleResponse
@@ -8,8 +7,9 @@ import com.billfolder.android.data.dto.IncomeEntryResponse
 import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.IncomeRepository
+import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.ui.util.CycleDirection
-import com.billfolder.android.ui.util.observeDrawerRefresh
+import com.billfolder.android.ui.util.observeDataChanges
 import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -68,9 +68,9 @@ sealed interface IncomeUiState {
 
 @HiltViewModel
 class IncomeViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
     private val cyclesRepository: CyclesRepository,
     private val incomeRepository: IncomeRepository,
+    private val dataChangeNotifier: DataChangeNotifier,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<IncomeUiState>(IncomeUiState.Loading)
@@ -78,7 +78,7 @@ class IncomeViewModel @Inject constructor(
 
     init {
         load()
-        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
+        observeDataChanges(dataChangeNotifier) { pullRefresh() }
     }
 
     fun refresh() {

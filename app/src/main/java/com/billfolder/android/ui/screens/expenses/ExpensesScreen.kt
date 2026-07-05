@@ -54,7 +54,6 @@ import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.expenses.components.ExpenseRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
-import com.billfolder.android.ui.util.RefreshOnResume
 
 /**
  * Tela de "despesas". Estrutura idêntica à de daily expenses, com 3 seções
@@ -69,7 +68,6 @@ fun ExpensesScreen(
     viewModel: ExpensesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    RefreshOnResume { viewModel.refresh() }
     var showAddSheet by remember { mutableStateOf(false) }
     var payingExpense by remember { mutableStateOf<ExpenseResponse?>(null) }
 

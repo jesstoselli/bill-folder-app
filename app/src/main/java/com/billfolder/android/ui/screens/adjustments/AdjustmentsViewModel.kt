@@ -1,6 +1,5 @@
 package com.billfolder.android.ui.screens.adjustments
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CycleAdjustmentResponse
@@ -8,8 +7,9 @@ import com.billfolder.android.data.dto.CycleAdjustmentTypes
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.repository.CycleAdjustmentsRepository
 import com.billfolder.android.data.repository.CyclesRepository
+import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.ui.util.CycleDirection
-import com.billfolder.android.ui.util.observeDrawerRefresh
+import com.billfolder.android.ui.util.observeDataChanges
 import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,9 +54,9 @@ sealed interface AdjustmentsUiState {
 
 @HiltViewModel
 class AdjustmentsViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
     private val cyclesRepository: CyclesRepository,
     private val adjustmentsRepository: CycleAdjustmentsRepository,
+    private val dataChangeNotifier: DataChangeNotifier,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<AdjustmentsUiState>(AdjustmentsUiState.Loading)
@@ -64,7 +64,7 @@ class AdjustmentsViewModel @Inject constructor(
 
     init {
         load()
-        observeDrawerRefresh(savedStateHandle) { pullRefresh() }
+        observeDataChanges(dataChangeNotifier) { pullRefresh() }
     }
 
     fun refresh() {

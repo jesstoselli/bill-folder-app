@@ -4,12 +4,15 @@ import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.UpdateExpenseRequest
+import com.billfolder.android.data.sync.DataChangeNotifier
+import com.billfolder.android.data.sync.notifyingOnSuccess
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ExpensesRepository @Inject constructor(
     private val api: BillFolderApi,
+    private val notifier: DataChangeNotifier,
 ) {
     suspend fun list(
         from: String? = null,
@@ -19,10 +22,10 @@ class ExpensesRepository @Inject constructor(
     ): List<ExpenseResponse> = api.getExpenses(from, to, status, categoryId)
 
     suspend fun create(request: CreateExpenseRequest): ExpenseResponse =
-        api.createExpense(request)
+        notifier.notifyingOnSuccess { api.createExpense(request) }
 
     suspend fun update(id: String, request: UpdateExpenseRequest): ExpenseResponse =
-        api.updateExpense(id, request)
+        notifier.notifyingOnSuccess { api.updateExpense(id, request) }
 
     /**
      * Conveniência: marca como paid mandando o mínimo necessário. Backend
@@ -49,7 +52,7 @@ class ExpensesRepository @Inject constructor(
      * Backend retorna 204 em sucesso; convertemos non-2xx em HttpException
      * pra o caller propagar pra UI (mesmo padrão dos outros repos).
      */
-    suspend fun delete(id: String) {
+    suspend fun delete(id: String) = notifier.notifyingOnSuccess {
         val response = api.deleteExpense(id)
         if (!response.isSuccessful) {
             throw retrofit2.HttpException(response)

@@ -7,19 +7,22 @@ import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
+import com.billfolder.android.data.sync.DataChangeNotifier
+import com.billfolder.android.data.sync.notifyingOnSuccess
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class CardsRepository @Inject constructor(
     private val api: BillFolderApi,
+    private val notifier: DataChangeNotifier,
 ) {
     // ---- Credit cards (entidades durávies) ----
     suspend fun listCards(): List<CreditCardAccountResponse> = api.getCreditCards()
 
 
     suspend fun createCard(request: CreateCreditCardAccountRequest): CreditCardAccountResponse =
-        api.createCreditCard(request)
+        notifier.notifyingOnSuccess { api.createCreditCard(request) }
 
     /**
      * PATCH parcial. Backend não recalcula statements/installments —
@@ -29,13 +32,13 @@ class CardsRepository @Inject constructor(
     suspend fun updateCard(
         id: String,
         request: UpdateCreditCardAccountRequest,
-    ): CreditCardAccountResponse = api.updateCreditCard(id, request)
+    ): CreditCardAccountResponse = notifier.notifyingOnSuccess { api.updateCreditCard(id, request) }
 
     /**
      * Deleta o cartão. Backend retorna 204 em sucesso; convertemos
      * non-2xx em HttpException pra o caller propagar pra UI.
      */
-    suspend fun deleteCard(id: String) {
+    suspend fun deleteCard(id: String) = notifier.notifyingOnSuccess {
         val response = api.deleteCreditCard(id)
         if (!response.isSuccessful) {
             throw retrofit2.HttpException(response)
@@ -47,7 +50,7 @@ class CardsRepository @Inject constructor(
         api.getCardEntries(cardId)
 
     suspend fun createEntry(request: CreateCardEntryRequest): CardEntryResponse =
-        api.createCardEntry(request)
+        notifier.notifyingOnSuccess { api.createCardEntry(request) }
 
     /**
      * PATCH limitado a label/categoria/notes — backend não aceita mudar
@@ -55,14 +58,14 @@ class CardsRepository @Inject constructor(
      * dedicado no futuro).
      */
     suspend fun updateEntry(id: String, request: UpdateCardEntryRequest): CardEntryResponse =
-        api.updateCardEntry(id, request)
+        notifier.notifyingOnSuccess { api.updateCardEntry(id, request) }
 
     /**
      * Backend retorna 204 em sucesso. Importante: deletar uma entry
      * parcelada remove TODAS as installments associadas e recalcula
      * statements futuros — backend lida com a cascata.
      */
-    suspend fun deleteEntry(id: String) {
+    suspend fun deleteEntry(id: String) = notifier.notifyingOnSuccess {
         val response = api.deleteCardEntry(id)
         if (!response.isSuccessful) {
             throw retrofit2.HttpException(response)

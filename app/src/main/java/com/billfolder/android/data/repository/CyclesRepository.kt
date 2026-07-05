@@ -3,12 +3,15 @@ package com.billfolder.android.data.repository
 import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.CreateCycleRequest
 import com.billfolder.android.data.dto.CycleResponse
+import com.billfolder.android.data.sync.DataChangeNotifier
+import com.billfolder.android.data.sync.notifyingOnSuccess
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class CyclesRepository @Inject constructor(
     private val api: BillFolderApi,
+    private val notifier: DataChangeNotifier,
 ) {
     /** Retorna o ciclo aberto. Lança HttpException(404) se não houver. */
     suspend fun getCurrent(): CycleResponse = api.getCurrentCycle()
@@ -30,5 +33,5 @@ class CyclesRepository @Inject constructor(
      * nessa data.").
      */
     suspend fun create(request: CreateCycleRequest): CycleResponse =
-        api.createCycle(request)
+        notifier.notifyingOnSuccess { api.createCycle(request) }
 }

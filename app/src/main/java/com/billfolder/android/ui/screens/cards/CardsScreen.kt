@@ -56,7 +56,6 @@ import com.billfolder.android.ui.screens.cards.components.CardCarouselChip
 import com.billfolder.android.ui.screens.cards.components.CardInstallmentRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.theme.PillShape
-import com.billfolder.android.ui.util.RefreshOnResume
 import com.billfolder.android.ui.util.ptBrMonthYearOf
 
 /**
@@ -79,7 +78,6 @@ fun CardsScreen(
     viewModel: CardsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    RefreshOnResume { viewModel.refresh() }
     var showAddEntrySheet by remember { mutableStateOf(false) }
     var showAddCardSheet by remember { mutableStateOf(false) }
 

@@ -53,7 +53,6 @@ import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.screens.income.components.IncomeEntryRow
 import com.billfolder.android.ui.screens.income.components.IncomeSourceRow
-import com.billfolder.android.ui.util.RefreshOnResume
 import com.billfolder.android.ui.theme.PillShape
 import com.billfolder.android.ui.util.formatBrl
 
@@ -72,7 +71,6 @@ fun IncomeScreen(
     viewModel: IncomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    RefreshOnResume { viewModel.refresh() }
     var showAddSheet by remember { mutableStateOf(false) }
     var showAddSourceSheet by remember { mutableStateOf(false) }
     var confirmingEntry by remember { mutableStateOf<IncomeEntryResponse?>(null) }
