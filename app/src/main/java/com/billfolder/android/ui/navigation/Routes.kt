@@ -46,6 +46,8 @@ object Routes {
     fun savingsWithSelected(savingsAccountId: String) =
         "savings?savingsAccountId=$savingsAccountId"
 
+    const val ADJUSTMENTS     = "adjustments"
+
     const val MANAGE_CARDS    = "manage-cards"
     const val MANAGE_SAVINGS  = "manage-savings"
     const val MANAGE_BANKS = "manage-banks"

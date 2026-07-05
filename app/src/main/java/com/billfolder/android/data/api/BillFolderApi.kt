@@ -11,12 +11,14 @@ import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreateDailyExpenseRequest
 import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.CreateCheckingAccountRequest
+import com.billfolder.android.data.dto.CreateCycleAdjustmentRequest
 import com.billfolder.android.data.dto.CreateCycleRequest
 import com.billfolder.android.data.dto.CreateIncomeEntryRequest
 import com.billfolder.android.data.dto.CreateIncomeSourceRequest
 import com.billfolder.android.data.dto.CreateSavingsAccountRequest
 import com.billfolder.android.data.dto.CreateSavingsTransactionRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
+import com.billfolder.android.data.dto.CycleAdjustmentResponse
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.ExpenseResponse
@@ -33,6 +35,7 @@ import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
 import com.billfolder.android.data.dto.UpdateCheckingAccountRequest
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
+import com.billfolder.android.data.dto.UpdateCycleAdjustmentRequest
 import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
@@ -169,6 +172,31 @@ interface BillFolderApi {
      */
     @POST("cycles")
     suspend fun createCycle(@Body request: CreateCycleRequest): CycleResponse
+
+    // ------------------------------------------------------------------------
+    // Cycle adjustments (ajustes avulsos do ciclo: vendas, estornos, saques)
+    // ------------------------------------------------------------------------
+
+    @GET("cycle-adjustments")
+    suspend fun getCycleAdjustments(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+        @Query("type") type: String? = null,
+    ): List<CycleAdjustmentResponse>
+
+    @POST("cycle-adjustments")
+    suspend fun createCycleAdjustment(
+        @Body request: CreateCycleAdjustmentRequest,
+    ): CycleAdjustmentResponse
+
+    @PATCH("cycle-adjustments/{id}")
+    suspend fun updateCycleAdjustment(
+        @Path("id") id: String,
+        @Body request: UpdateCycleAdjustmentRequest,
+    ): CycleAdjustmentResponse
+
+    @DELETE("cycle-adjustments/{id}")
+    suspend fun deleteCycleAdjustment(@Path("id") id: String): Response<Unit>
 
     // ------------------------------------------------------------------------
     // Daily expenses (despesas avulsas do dia-a-dia)

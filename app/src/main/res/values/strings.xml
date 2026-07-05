@@ -179,6 +179,33 @@
          indicamos QUAL parcela dentro do total, exibida na fatura correspondente. -->
     <string name="cards_installment_progress_format">%1$s (%2$d/%3$d)</string>
 
+    <!-- Cycle adjustments (ajustes do ciclo — entradas/saídas avulsas) -->
+    <string name="adjustments_screen_title">ajustes do ciclo</string>
+    <string name="adjustments_total_label">total no ciclo</string>
+    <!-- %1$s = total inflows formatted, %2$s = total outflows formatted -->
+    <string name="adjustments_total_subtitle_format">entradas %1$s · saídas %2$s</string>
+    <string name="adjustments_empty_title">nenhum ajuste nesse ciclo.</string>
+    <string name="adjustments_empty_subtitle">use o botão + pra registrar uma entrada ou saída avulsa — venda de item, dinheiro emprestado, presente inesperado etc.</string>
+
+    <string name="adjustment_row_type_inflow">entrada</string>
+    <string name="adjustment_row_type_outflow">saída</string>
+
+    <string name="adjustment_delete_dialog_title">deletar ajuste?</string>
+    <!-- %1$s = label do ajuste -->
+    <string name="adjustment_delete_dialog_message">isso vai apagar \"%1$s\" desse ciclo. essa ação não pode ser desfeita.</string>
+
+    <!-- Add Adjustment (sheet) -->
+    <string name="add_adjustment_title">novo ajuste</string>
+    <string name="add_adjustment_title_edit">editar ajuste</string>
+    <string name="add_adjustment_field_type">tipo</string>
+    <string name="add_adjustment_field_date">data</string>
+    <string name="add_adjustment_field_label">descrição</string>
+    <string name="add_adjustment_field_amount">valor</string>
+    <string name="add_adjustment_type_inflow">entrada</string>
+    <string name="add_adjustment_type_outflow">saída</string>
+    <string name="add_adjustment_validation_label">descreva o ajuste.</string>
+    <string name="add_adjustment_validation_amount">informe um valor maior que zero.</string>
+
     <!-- Manage Cards (gerenciar > cartões) -->
     <string name="manage_cards_screen_title">cartões</string>
     <string name="manage_cards_empty_title">você ainda não tem cartões cadastrados.</string>

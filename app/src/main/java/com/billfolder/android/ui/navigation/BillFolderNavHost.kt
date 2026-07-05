@@ -18,6 +18,7 @@ import com.billfolder.android.ui.components.DrawerDestination
 import com.billfolder.android.ui.screens.auth.ForgotPasswordScreen
 import com.billfolder.android.ui.screens.auth.LoginScreen
 import com.billfolder.android.ui.screens.auth.ResetPasswordScreen
+import com.billfolder.android.ui.screens.adjustments.AdjustmentsScreen
 import com.billfolder.android.ui.screens.auth.SignupScreen
 import com.billfolder.android.ui.screens.cards.CardsScreen
 import com.billfolder.android.ui.screens.dailyexpenses.DailyExpensesScreen
@@ -224,15 +225,16 @@ fun BillFolderNavHost(
                     onMenuClick = openDrawer,
                 )
             }
+            composable(Routes.ADJUSTMENTS) {
+                AdjustmentsScreen(
+                    onMenuClick = openDrawer,
+                )
+            }
         }
     }
 }
 
-/**
- * Mapeia destinos do drawer pra rotas reais. Telas que ainda não existem
- * (Adjustments) são no-op por enquanto — só fecham o drawer e ficam onde
- * estão.
- */
+/** Mapeia destinos do drawer pra rotas reais. */
 private fun NavHostController.navigateFromDrawer(destination: DrawerDestination) {
     val route = when (destination) {
         DrawerDestination.Home           -> Routes.HOME
@@ -241,10 +243,10 @@ private fun NavHostController.navigateFromDrawer(destination: DrawerDestination)
         DrawerDestination.Income         -> Routes.INCOME
         DrawerDestination.Cards          -> Routes.CARDS           // consumo
         DrawerDestination.Savings        -> Routes.SAVINGS         // consumo
+        DrawerDestination.Adjustments    -> Routes.ADJUSTMENTS
         DrawerDestination.ManageCards    -> Routes.MANAGE_CARDS    // CRUD
         DrawerDestination.ManageSavings  -> Routes.MANAGE_SAVINGS  // CRUD
         DrawerDestination.ManageBanks    -> Routes.MANAGE_BANKS    // CRUD
-        else -> return // ainda não temos tela; drawer já fechou no caller
     }
     navigate(route) {
         // Não acumula stack se o usuário fica trocando entre items
@@ -280,6 +282,7 @@ private fun String?.toDrawerDestination(): DrawerDestination? = when (this) {
     Routes.INCOME          -> DrawerDestination.Income
     Routes.CARDS           -> DrawerDestination.Cards
     Routes.SAVINGS         -> DrawerDestination.Savings
+    Routes.ADJUSTMENTS     -> DrawerDestination.Adjustments
     Routes.MANAGE_CARDS    -> DrawerDestination.ManageCards
     Routes.MANAGE_SAVINGS  -> DrawerDestination.ManageSavings
     Routes.MANAGE_BANKS    -> DrawerDestination.ManageBanks
