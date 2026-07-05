@@ -232,6 +232,8 @@ private fun Content(
                     onPrevious = onPreviousCycle,
                     onNext = onNextCycle,
                     headerLabelOverride = ptBrMonthYearOf(statement.dueDate),
+                    previousEnabled = state.canGoToPreviousStatement(),
+                    nextEnabled = state.canGoToNextStatement(),
                 )
             }
         }

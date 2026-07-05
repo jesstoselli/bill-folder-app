@@ -251,8 +251,17 @@ class CardsViewModel @Inject constructor(
     // basta — nada de refetch, sem estado adicional.
     // ------------------------------------------------------------------------
 
-    fun goToPreviousCycle() = shiftReferenceDate(months = -1L)
-    fun goToNextCycle()     = shiftReferenceDate(months = 1L)
+    // Guard nos bounds: não navega pra além da primeira/última fatura com
+    // parcelas do cartão selecionado. Evita shift infinito pra faturas vazias.
+    fun goToPreviousCycle() {
+        if ((_state.value as? CardsUiState.Content)?.canGoToPreviousStatement() != true) return
+        shiftReferenceDate(months = -1L)
+    }
+
+    fun goToNextCycle() {
+        if ((_state.value as? CardsUiState.Content)?.canGoToNextStatement() != true) return
+        shiftReferenceDate(months = 1L)
+    }
 
     private fun shiftReferenceDate(months: Long) {
         _state.update { s ->
@@ -315,6 +324,38 @@ fun CardsUiState.Content.currentStatement(): StatementPeriod? {
         closingDay = card.closingDay,
         dueDay = card.dueDay,
     )
+}
+
+/**
+ * Faixa de dueDates das faturas do cartão selecionado que efetivamente têm
+ * parcelas. É o que limita a navegação prev/next: fora dessa faixa só existem
+ * faturas vazias — não faz sentido deixar o user shiftar a âncora ao infinito
+ * (ex: 40 taps no → chegando em "novembro/2029" com lista vazia).
+ *
+ * Null quando o cartão selecionado não tem nenhuma parcela (nada a navegar).
+ */
+fun CardsUiState.Content.selectedCardStatementDueRange(): ClosedRange<LocalDate>? {
+    val dues = allEntries.asSequence()
+        .filter { it.cardId == selectedCardId }
+        .flatMap { it.installments.asSequence() }
+        .mapNotNull { runCatching { LocalDate.parse(it.statementDueDate) }.getOrNull() }
+        .toList()
+    if (dues.isEmpty()) return null
+    return dues.min()..dues.max()
+}
+
+/** true se há uma fatura posterior (com parcelas) pra navegar. */
+fun CardsUiState.Content.canGoToNextStatement(): Boolean {
+    val range = selectedCardStatementDueRange() ?: return false
+    val due = currentStatement()?.dueDate ?: return false
+    return due < range.endInclusive
+}
+
+/** true se há uma fatura anterior (com parcelas) pra navegar. */
+fun CardsUiState.Content.canGoToPreviousStatement(): Boolean {
+    val range = selectedCardStatementDueRange() ?: return false
+    val due = currentStatement()?.dueDate ?: return false
+    return due > range.start
 }
 
 /**

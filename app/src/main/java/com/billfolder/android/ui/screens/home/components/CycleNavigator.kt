@@ -52,6 +52,14 @@ fun CycleNavigator(
      * não do periodStart — a fatura de julho começa em 18/junho).
      */
     headerLabelOverride: String? = null,
+    /**
+     * Habilita/desabilita as setas individualmente. Default true (telas de
+     * ciclo BillFolder navegam livremente). A CardsScreen passa false no
+     * extremo da faixa de faturas com parcelas — evita navegar pra faturas
+     * vazias ao infinito.
+     */
+    previousEnabled: Boolean = true,
+    nextEnabled: Boolean = true,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -69,23 +77,25 @@ fun CycleNavigator(
 
             IconButton(
                 onClick = onPrevious,
+                enabled = previousEnabled,
                 modifier = Modifier.size(32.dp),
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                     contentDescription = stringResource(R.string.cycle_previous_content_description),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = arrowTint(previousEnabled),
                 )
             }
 
             IconButton(
                 onClick = onNext,
+                enabled = nextEnabled,
                 modifier = Modifier.size(32.dp),
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(R.string.cycle_next_content_description),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = arrowTint(nextEnabled),
                 )
             }
         }
@@ -99,6 +109,15 @@ fun CycleNavigator(
         )
     }
 }
+
+/** Tint da seta: dim (alpha 0.38) quando desabilitada, seguindo o M3. */
+@Composable
+private fun arrowTint(enabled: Boolean) =
+    if (enabled) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+    }
 
 /**
  * Tenta gerar "abril/2026" em lowercase a partir do startIso.
