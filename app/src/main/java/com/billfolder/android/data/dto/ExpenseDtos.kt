@@ -86,6 +86,20 @@ data class PayOccurrenceRequest(
 )
 
 /**
+ * POST /v1/expenses/{id}/update-amount — reajusta o valor POR SESSÃO
+ * (occurrenceAmount) de uma despesa provisionada. O total do mês
+ * (expectedAmount) recalcula no backend = novo valor × nº de ocorrências.
+ *
+ * scope no body é camelCase ("this"/"thisAndFollowing") — igual ao reprice
+ * de assinatura de cartão, diferente do snake_case do delete.
+ */
+@Serializable
+data class RepriceProvisionedExpenseRequest(
+    @SerialName("amount") val amount: Double,
+    @SerialName("scope")  val scope: String,
+)
+
+/**
  * DTOs de "recorrência de despesa" (template que gera despesas
  * automaticamente a cada ciclo). Alinhado com
  * BillFolder.Application.Dtos.ExpenseRecurrences (.NET).

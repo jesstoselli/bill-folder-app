@@ -369,6 +369,13 @@
     <!-- %1$s = label -->
     <string name="reprice_scope_message">a partir de qual ocorrência de \"%1$s\" o novo valor vale?</string>
 
+    <!-- Reprice provisioned expense (sheet de reajustar valor por sessão) -->
+    <string name="reprice_provisioned_title">reajustar valor por sessão</string>
+    <string name="reprice_provisioned_field_amount">novo valor por sessão</string>
+    <string name="reprice_provisioned_cta">salvar novo valor</string>
+    <!-- %1$s = label -->
+    <string name="reprice_provisioned_summary_format">novo valor por sessão de \"%1$s\" — o total do mês recalcula sozinho</string>
+
     <!-- Provisioned expense (baixa semanal) -->
     <!-- Progresso na row: %1$s = label, %2$d = pagas, %3$d = total -->
     <string name="expense_provisioned_progress_format">%1$s (%2$d/%3$d)</string>

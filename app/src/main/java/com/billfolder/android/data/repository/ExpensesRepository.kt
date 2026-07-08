@@ -4,6 +4,7 @@ import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.PayOccurrenceRequest
+import com.billfolder.android.data.dto.RepriceProvisionedExpenseRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.data.sync.notifyingOnSuccess
@@ -59,6 +60,17 @@ class ExpensesRepository @Inject constructor(
         id: String,
         request: PayOccurrenceRequest,
     ): ExpenseResponse = notifier.notifyingOnSuccess { api.payOccurrence(id, request) }
+
+    /**
+     * Reajusta o valor por sessão de uma despesa provisionada
+     * (POST /expenses/{id}/update-amount). scope no body é camelCase
+     * ("this"/"thisAndFollowing"). Retorna o ExpenseResponse atualizado;
+     * notifica o bus em sucesso como todo write.
+     */
+    suspend fun repriceProvisioned(
+        id: String,
+        request: RepriceProvisionedExpenseRequest,
+    ): ExpenseResponse = notifier.notifyingOnSuccess { api.repriceProvisionedExpense(id, request) }
 
     /**
      * Backend retorna 204 em sucesso; convertemos non-2xx em HttpException

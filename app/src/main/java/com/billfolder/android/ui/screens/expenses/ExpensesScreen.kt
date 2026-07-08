@@ -185,18 +185,34 @@ fun ExpensesScreen(
         }
 
         // Sheet de editar (modo edit) — visível enquanto editing != null no VM.
-        // Reusa AddExpenseSheet com `existing` preenchido. PATCH sem mexer
-        // em status/paid* (esse é caminho do PayExpenseSheet acima).
+        // Branch por tipo de despesa:
+        //  - provisionada (fisio/terapia semanal): edita o VALOR POR SESSÃO via
+        //    RepriceProvisionedExpenseSheet — mexer no total (expectedAmount) é
+        //    bloqueado backend-side; quem recalcula o total é o backend.
+        //  - normal: reusa o AddExpenseSheet com `existing` preenchido (PATCH sem
+        //    mexer em status/paid* — esse é caminho do PayExpenseSheet acima).
         val current = state
         if (current is ExpensesUiState.Content && current.editing != null) {
-            AddExpenseSheet(
-                existing = current.editing,
-                onDismiss = viewModel::cancelEdit,
-                onSaved = {
-                    viewModel.cancelEdit()
-                    viewModel.refresh()
-                },
-            )
+            val editing = current.editing
+            if (editing.isProvisioned()) {
+                RepriceProvisionedExpenseSheet(
+                    expense = editing,
+                    onDismiss = viewModel::cancelEdit,
+                    onSaved = {
+                        viewModel.cancelEdit()
+                        viewModel.refresh()
+                    },
+                )
+            } else {
+                AddExpenseSheet(
+                    existing = editing,
+                    onDismiss = viewModel::cancelEdit,
+                    onSaved = {
+                        viewModel.cancelEdit()
+                        viewModel.refresh()
+                    },
+                )
+            }
         }
 
         // Dialog de confirmação de delete — atrelado ao pendingDelete do VM.

@@ -33,6 +33,7 @@ import com.billfolder.android.data.dto.IncomeSourceResponse
 import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
+import com.billfolder.android.data.dto.RepriceProvisionedExpenseRequest
 import com.billfolder.android.data.dto.ResetPasswordRequest
 import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SavingsTransactionResponse
@@ -263,6 +264,17 @@ interface BillFolderApi {
     suspend fun payOccurrence(
         @Path("id") id: String,
         @Body request: PayOccurrenceRequest,
+    ): ExpenseResponse
+
+    /**
+     * Reajusta o valor por sessão de uma despesa provisionada. scope (body,
+     * camelCase): "this" ou "thisAndFollowing". Retorna o ExpenseResponse
+     * atualizado (occurrenceAmount + expectedAmount recalculado).
+     */
+    @POST("expenses/{id}/update-amount")
+    suspend fun repriceProvisionedExpense(
+        @Path("id") id: String,
+        @Body request: RepriceProvisionedExpenseRequest,
     ): ExpenseResponse
 
     /**
