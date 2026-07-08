@@ -1,8 +1,10 @@
 package com.billfolder.android.ui.screens.cards
 
+import com.billfolder.android.data.dto.CardEntryRecurrenceResponse
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CreditCardAccountResponse
+import com.billfolder.android.data.repository.CardEntryRecurrencesRepository
 import com.billfolder.android.data.repository.CardsRepository
 import com.billfolder.android.data.repository.ReferenceDataRepository
 import com.billfolder.android.data.sync.DataChangeNotifier
@@ -24,6 +26,7 @@ class AddCardEntryViewModelTest {
     private val notifier = DataChangeNotifier()
     private val cardsRepo = CardsRepository(api, notifier)
     private val referenceDataRepo = ReferenceDataRepository(api)
+    private val recurrencesRepo = CardEntryRecurrencesRepository(api, notifier)
 
     private fun category(id: String, order: Int) = CategoryDto(
         id = id, key = "key-$id", namePt = "Cat $id", isSystem = true, displayOrder = order,
@@ -41,7 +44,14 @@ class AddCardEntryViewModelTest {
         createdAt = "2026-06-10T00:00:00Z", updatedAt = "2026-06-10T00:00:00Z",
     )
 
-    private fun viewModel() = AddCardEntryViewModel(cardsRepo, referenceDataRepo)
+    private fun recurrenceResponse(id: String) = CardEntryRecurrenceResponse(
+        id = id, cardId = "c1", cardName = "Cartão c1", defaultLabel = "Netflix",
+        defaultAmount = 39.9, defaultCategoryId = "cat1", defaultCategoryName = "Cat cat1",
+        dayOfMonth = 10, startDate = "2026-06-10", isActive = true,
+        createdAt = "2026-06-10T00:00:00Z", updatedAt = "2026-06-10T00:00:00Z",
+    )
+
+    private fun viewModel() = AddCardEntryViewModel(cardsRepo, referenceDataRepo, recurrencesRepo)
 
     private val msgs = arrayOf(
         "label vazio", "valor inválido", "cartão vazio", "parcelas inválidas", "categoria vazia",
@@ -171,5 +181,93 @@ class AddCardEntryViewModelTest {
         assertTrue(api.createCardEntryCalls.isEmpty())
         assertEquals("entry-9", updatedId)
         assertTrue(vm.state.value.savedSuccessfully)
+    }
+
+    // ---- repeat monthly (assinatura) ------------------------------------------
+
+    @Test
+    fun `submit com repeat monthly cria recorrencia com dayOfMonth da data e nao chama createCardEntry`() {
+        api.creditCards = listOf(card("c1"))
+        api.categories = listOf(category("cat1", 1))
+        api.onCreateCardEntryRecurrence = { recurrenceResponse("rec-1") }
+        val vm = viewModel()
+        vm.onLabelChange("  Netflix  ")
+        vm.onTotalAmountChange("39,90")
+        vm.onCategoryChange("cat1")
+        vm.onPurchaseDateChange("2026-06-14")
+        vm.onRepeatMonthlyChange(true)
+
+        vm.submitAll()
+
+        // One-off NÃO é chamado
+        assertTrue(api.createCardEntryCalls.isEmpty())
+
+        assertEquals(1, api.createCardEntryRecurrenceCalls.size)
+        val req = api.createCardEntryRecurrenceCalls.first()
+        assertEquals("c1", req.cardId)
+        assertEquals("Netflix", req.defaultLabel) // trimmed
+        assertEquals(39.9, req.defaultAmount, 0.0001)
+        assertEquals("cat1", req.defaultCategoryId)
+        assertEquals(14, req.dayOfMonth) // dia da data de compra
+        assertEquals("2026-06-14", req.startDate)
+        assertNull(req.endDate)
+
+        val state = vm.state.value
+        assertTrue(state.savedSuccessfully)
+        assertFalse(state.isSaving)
+        assertNull(state.errorMessage)
+    }
+
+    @Test
+    fun `submit com repeat monthly false mantem fluxo one-off inalterado`() {
+        api.creditCards = listOf(card("c1"))
+        api.categories = listOf(category("cat1", 1))
+        api.onCreateCardEntry = { cardEntry("new-1") }
+        val vm = viewModel()
+        vm.onLabelChange("Notebook")
+        vm.onTotalAmountChange("1500,00")
+        vm.onInstallmentsChange("3")
+        vm.onCategoryChange("cat1")
+        // repeatMonthly permanece false (default)
+
+        vm.submitAll()
+
+        assertEquals(1, api.createCardEntryCalls.size)
+        assertTrue(api.createCardEntryRecurrenceCalls.isEmpty())
+        assertTrue(vm.state.value.savedSuccessfully)
+    }
+
+    @Test
+    fun `submit com repeat monthly e label em branco nao cria recorrencia`() {
+        api.creditCards = listOf(card("c1"))
+        api.categories = listOf(category("cat1", 1))
+        val vm = viewModel()
+        vm.onTotalAmountChange("39,90")
+        vm.onCategoryChange("cat1")
+        vm.onRepeatMonthlyChange(true)
+        // label em branco
+
+        vm.submitAll()
+
+        assertEquals("label vazio", vm.state.value.errorMessage)
+        assertTrue(api.createCardEntryRecurrenceCalls.isEmpty())
+        assertTrue(api.createCardEntryCalls.isEmpty())
+    }
+
+    @Test
+    fun `submit com repeat monthly e valor zero nao cria recorrencia`() {
+        api.creditCards = listOf(card("c1"))
+        api.categories = listOf(category("cat1", 1))
+        val vm = viewModel()
+        vm.onLabelChange("Netflix")
+        vm.onTotalAmountChange("0")
+        vm.onCategoryChange("cat1")
+        vm.onRepeatMonthlyChange(true)
+
+        vm.submitAll()
+
+        assertEquals("valor inválido", vm.state.value.errorMessage)
+        assertTrue(api.createCardEntryRecurrenceCalls.isEmpty())
+        assertTrue(api.createCardEntryCalls.isEmpty())
     }
 }

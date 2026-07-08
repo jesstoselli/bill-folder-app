@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CategoryDto
+import com.billfolder.android.data.dto.CreateCardEntryRecurrenceRequest
 import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
+import com.billfolder.android.data.repository.CardEntryRecurrencesRepository
 import com.billfolder.android.data.repository.CardsRepository
 import com.billfolder.android.data.repository.ReferenceDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,6 +44,11 @@ data class AddCardEntryFormState(
     val selectedCategoryId: String? = null,
     val notes: String = "",
 
+    // Quando true, a compra vira um template de assinatura mensal
+    // (CreateCardEntryRecurrenceRequest) em vez de uma CardEntry avulsa.
+    // Assinatura é sempre 1x — o campo de parcelas some no sheet.
+    val repeatMonthly: Boolean = false,
+
     val cards: List<CreditCardAccountResponse> = emptyList(),
     val categories: List<CategoryDto> = emptyList(),
     val isLoadingReferences: Boolean = true,
@@ -57,6 +64,7 @@ data class AddCardEntryFormState(
 class AddCardEntryViewModel @Inject constructor(
     private val cardsRepository: CardsRepository,
     private val referenceDataRepository: ReferenceDataRepository,
+    private val cardEntryRecurrencesRepository: CardEntryRecurrencesRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AddCardEntryFormState())
@@ -95,6 +103,7 @@ class AddCardEntryViewModel @Inject constructor(
     fun onCardChange(id: String) = _state.update { it.copy(selectedCardId = id) }
     fun onCategoryChange(id: String) = _state.update { it.copy(selectedCategoryId = id) }
     fun onNotesChange(value: String) = _state.update { it.copy(notes = value) }
+    fun onRepeatMonthlyChange(value: Boolean) = _state.update { it.copy(repeatMonthly = value) }
 
     /**
      * Preenche o form com uma entry existente — modo edit. Todos os campos
@@ -144,7 +153,9 @@ class AddCardEntryViewModel @Inject constructor(
                 current.label.isBlank()                    -> labelEmptyMessage
                 parsedAmount <= 0                          -> amountInvalidMessage
                 current.selectedCardId.isNullOrBlank()     -> cardEmptyMessage
-                parsedInstallments < 1                     -> installmentsInvalidMessage
+                // Assinatura é sempre 1x — não há campo de parcelas pra validar.
+                !current.repeatMonthly &&
+                    parsedInstallments < 1                 -> installmentsInvalidMessage
                 current.selectedCategoryId.isNullOrBlank() -> categoryEmptyMessage
                 else                                       -> null
             }
@@ -166,6 +177,20 @@ class AddCardEntryViewModel @Inject constructor(
                         notes = current.notes.trim(),
                     )
                     cardsRepository.updateEntry(current.editingId, request)
+                } else if (current.repeatMonthly) {
+                    // Assinatura mensal: vira um template de recorrência. O
+                    // backend gera as CardEntries mensais automaticamente. O
+                    // dia do vencimento é o dia do mês da data de compra e a
+                    // data de compra vira o startDate.
+                    val request = CreateCardEntryRecurrenceRequest(
+                        cardId = current.selectedCardId!!,
+                        defaultLabel = current.label.trim(),
+                        defaultAmount = parseAmount(current.totalAmount)!!,
+                        defaultCategoryId = current.selectedCategoryId!!,
+                        dayOfMonth = LocalDate.parse(current.purchaseDate).dayOfMonth,
+                        startDate = current.purchaseDate,
+                    )
+                    cardEntryRecurrencesRepository.create(request)
                 } else {
                     val request = CreateCardEntryRequest(
                         cardId = current.selectedCardId!!,
