@@ -83,10 +83,16 @@ fun BillFolderTransactionSheet(
 
             Spacer(Modifier.height(20.dp))
 
-            // Conteúdo scrollable
+            // Conteúdo scrollable. weight(1f, fill = false) é ESSENCIAL: limita
+            // esta Column ao espaço que sobra (após header + erro + footer) em vez
+            // de crescer até a altura intrínseca do conteúdo. Sem isso, um form alto
+            // estoura a altura do sheet e empurra o footer (CTA) pra fora da tela,
+            // sem rolar. `fill = false` mantém o sheet curto pra forms pequenos —
+            // só ocupa o necessário; quando o conteúdo passa do disponível, rola.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
