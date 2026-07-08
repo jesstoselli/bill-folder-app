@@ -264,7 +264,11 @@ private fun NavHostController.navigateFromDrawer(destination: DrawerDestination)
  * destacar o item correspondente quando o drawer abre. Retorna null
  * em rotas que não fazem parte do drawer (auth, e mais futuras).
  */
-private fun String?.toDrawerDestination(): DrawerDestination? = when (this) {
+// Casa pela BASE da rota (sem a query) — as telas Cards/Savings usam rotas
+// parametrizadas ("cards?cardId={cardId}"), e sem tirar a query elas não
+// casariam → drawerEnabled/gesturesEnabled = false → o menu não fecharia
+// (o scrim-tap do ModalNavigationDrawer M3 é gated por gesturesEnabled).
+internal fun String?.toDrawerDestination(): DrawerDestination? = when (this?.substringBefore("?")) {
     Routes.HOME            -> DrawerDestination.Home
     Routes.DAILY_EXPENSES  -> DrawerDestination.DailyExpenses
     Routes.EXPENSES        -> DrawerDestination.Expenses
