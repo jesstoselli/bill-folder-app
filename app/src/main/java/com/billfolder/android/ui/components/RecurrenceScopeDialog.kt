@@ -4,13 +4,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.billfolder.android.R
+import com.billfolder.android.ui.theme.PillShape
 
 /**
  * Escopo de uma ação sobre uma ocorrência de recorrência (despesa semanal
@@ -40,13 +43,14 @@ fun ScopeChoice.repriceLiteral(): String = when (this) {
 }
 
 /**
- * Modal reutilizável pra escolher o escopo. Mesma linguagem visual do
- * DeleteExpenseDialog / logout confirm (AlertDialog M3, surfaceContainerHigh).
+ * Modal reutilizável pra escolher o escopo (excluir/reajustar recorrência).
  *
- * Duas ações empilhadas ("só esta" / "esta e as próximas") + cancelar. O
- * AlertDialog do M3 só tem os slots confirm/dismiss, então empilhamos as
- * duas escolhas de escopo num Column no slot `confirmButton` e deixamos
- * cancelar no `dismissButton`.
+ * As duas escolhas são botões FULL-WIDTH EMPILHADOS no corpo (slot `text`),
+ * não nos slots de botão do AlertDialog — porque o M3 dispõe
+ * confirmButton+dismissButton lado a lado numa linha, o que espremia/
+ * desalinhava as ações longas. Aqui as escolhas ficam claras e empilhadas;
+ * `cancelar` fica sozinho no `dismissButton` (canto inferior), e o
+ * `confirmButton` fica vazio de propósito.
  */
 @Composable
 fun RecurrenceScopeDialog(
@@ -58,24 +62,34 @@ fun RecurrenceScopeDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = title) },
-        text = { Text(text = message) },
-        confirmButton = {
+        text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.Top,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                TextButton(
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FilledTonalButton(
                     onClick = { onScopeChosen(ScopeChoice.This) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = PillShape,
                 ) {
                     Text(stringResource(R.string.recurrence_scope_this))
                 }
-                TextButton(
+                FilledTonalButton(
                     onClick = { onScopeChosen(ScopeChoice.ThisAndFollowing) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = PillShape,
                 ) {
                     Text(stringResource(R.string.recurrence_scope_this_and_following))
                 }
             }
         },
+        // Vazio de propósito — as ações são os botões empilhados acima.
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.common_cancel))
