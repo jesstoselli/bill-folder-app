@@ -346,6 +346,29 @@
     <string name="expense_delete_dialog_title">deletar despesa?</string>
     <string name="expense_delete_dialog_message">isso vai apagar \"%1$s\" permanentemente. essa ação não pode ser desfeita.</string>
 
+    <!-- Recurrence scope (modal "só esta" vs "esta e as próximas") -->
+    <string name="recurrence_scope_this">só esta</string>
+    <string name="recurrence_scope_this_and_following">esta e as próximas</string>
+    <!-- Encerrar despesa recorrente (semanal provisionada) -->
+    <string name="recurrence_scope_expense_title">encerrar despesa recorrente</string>
+    <!-- %1$s = label -->
+    <string name="recurrence_scope_expense_message">\"%1$s\" faz parte de uma recorrência. o que você quer apagar?</string>
+    <!-- Encerrar assinatura de cartão -->
+    <string name="recurrence_scope_subscription_title">encerrar assinatura</string>
+    <!-- %1$s = label -->
+    <string name="recurrence_scope_subscription_message">\"%1$s\" é uma assinatura. o que você quer apagar?</string>
+
+    <!-- Reprice subscription (sheet de reprecificar assinatura de cartão) -->
+    <string name="reprice_subscription_title">reprecificar assinatura</string>
+    <string name="reprice_subscription_field_amount">novo valor</string>
+    <string name="reprice_subscription_cta">salvar novo valor</string>
+    <!-- %1$s = label -->
+    <string name="reprice_subscription_summary_format">novo valor para \"%1$s\"</string>
+    <!-- Modal de escopo do reprice: pergunta se aplica só a esta ou às próximas -->
+    <string name="reprice_scope_title">aplicar novo valor</string>
+    <!-- %1$s = label -->
+    <string name="reprice_scope_message">a partir de qual ocorrência de \"%1$s\" o novo valor vale?</string>
+
     <!-- Provisioned expense (baixa semanal) -->
     <!-- Progresso na row: %1$s = label, %2$d = pagas, %3$d = total -->
     <string name="expense_provisioned_progress_format">%1$s (%2$d/%3$d)</string>

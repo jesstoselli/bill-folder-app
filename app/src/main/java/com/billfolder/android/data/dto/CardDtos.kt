@@ -72,6 +72,12 @@ data class CardEntryResponse(
     @SerialName("categoryId")        val categoryId: String,
     @SerialName("categoryName")      val categoryName: String,
     @SerialName("notes")             val notes: String? = null,
+    // Id do template de recorrência que gerou essa compra (assinatura tipo
+    // Netflix/Spotify). null numa compra avulsa. É o gatilho pra pedir o
+    // escopo ("só esta" vs "esta e as próximas") ao deletar/reprecificar —
+    // ver CardEntryResponse.isSubscription(). Opcional na desserialização:
+    // se o backend não emitir o campo, cai em null (compra tratada como avulsa).
+    @SerialName("templateId")        val templateId: String? = null,
     @SerialName("createdAt")         val createdAt: String,
     @SerialName("updatedAt")         val updatedAt: String,
     @SerialName("installments")      val installments: List<EntryInstallmentDto> = emptyList(),
