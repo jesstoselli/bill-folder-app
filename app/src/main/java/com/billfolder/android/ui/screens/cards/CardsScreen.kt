@@ -50,6 +50,8 @@ import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.ui.components.BillFolderPullToRefresh
 import com.billfolder.android.ui.components.BillFolderTotalCard
+import com.billfolder.android.ui.components.RecurrenceScopeDialog
+import com.billfolder.android.ui.components.deleteLiteral
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.cards.components.AddCardChip
 import com.billfolder.android.ui.screens.cards.components.CardCarouselChip
@@ -164,28 +166,59 @@ fun CardsScreen(
             )
         }
 
-        // Sheet de editar entry (modo edit). Reusa AddCardEntrySheet com
-        // `existing`. PATCH só toca em label/categoria/notes — campos
-        // cartão/data/valor/parcelas ficam disabled.
+        // Sheet de editar entry (modo edit). Branch: assinatura (entry com
+        // templateId) abre o RepriceSubscriptionSheet (mudar o valor mensal
+        // com escopo); compra avulsa reusa AddCardEntrySheet com `existing`
+        // (PATCH só toca em label/categoria/notes — cartão/data/valor/parcelas
+        // ficam disabled).
         val current = state
         if (current is CardsUiState.Content && current.editing != null) {
-            AddCardEntrySheet(
-                existing = current.editing,
-                onDismiss = viewModel::cancelEdit,
-                onSaved = {
-                    viewModel.cancelEdit()
-                    viewModel.refresh()
-                },
-            )
+            val editing = current.editing
+            if (editing.isSubscription()) {
+                RepriceSubscriptionSheet(
+                    entry = editing,
+                    onDismiss = viewModel::cancelEdit,
+                    onSaved = {
+                        viewModel.cancelEdit()
+                        viewModel.refresh()
+                    },
+                )
+            } else {
+                AddCardEntrySheet(
+                    existing = editing,
+                    onDismiss = viewModel::cancelEdit,
+                    onSaved = {
+                        viewModel.cancelEdit()
+                        viewModel.refresh()
+                    },
+                )
+            }
         }
 
-        // Dialog de confirmação de delete da entry — atrelado ao pendingDelete.
+        // Dialog de confirmação de delete da entry. Branch: assinatura pede o
+        // escopo via RecurrenceScopeDialog (literal snake_case); compra avulsa
+        // segue o confirm simples (scope null).
         if (current is CardsUiState.Content && current.pendingDelete != null) {
-            DeleteCardEntryDialog(
-                entryLabel = current.pendingDelete.label,
-                onConfirm = viewModel::confirmDelete,
-                onCancel = viewModel::cancelDelete,
-            )
+            val pending = current.pendingDelete
+            if (pending.isSubscription()) {
+                RecurrenceScopeDialog(
+                    title = stringResource(R.string.recurrence_scope_subscription_title),
+                    message = stringResource(
+                        R.string.recurrence_scope_subscription_message,
+                        pending.label,
+                    ),
+                    onScopeChosen = { choice ->
+                        viewModel.confirmDelete(scope = choice.deleteLiteral())
+                    },
+                    onDismiss = viewModel::cancelDelete,
+                )
+            } else {
+                DeleteCardEntryDialog(
+                    entryLabel = pending.label,
+                    onConfirm = { viewModel.confirmDelete() },
+                    onCancel = viewModel::cancelDelete,
+                )
+            }
         }
     }
 }

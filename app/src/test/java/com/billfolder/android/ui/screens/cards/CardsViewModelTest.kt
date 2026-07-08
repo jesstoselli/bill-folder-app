@@ -103,6 +103,33 @@ class CardsViewModelTest {
     }
 
     @Test
+    fun `confirmDelete sem scope manda null pro backend (compra avulsa)`() {
+        api.creditCards = listOf(card("c1"))
+        val target = entry("e1", "c1", "2026-06-25")
+        api.cardEntries = listOf(target)
+        val vm = viewModel()
+
+        vm.requestDelete(target)
+        vm.confirmDelete()
+
+        assertEquals(listOf<String?>(null), api.deleteCardEntryScopes)
+    }
+
+    @Test
+    fun `confirmDelete com scope this_and_following thread o literal snake_case`() {
+        api.creditCards = listOf(card("c1"))
+        val target = entry("e1", "c1", "2026-06-25")
+        api.cardEntries = listOf(target)
+        val vm = viewModel()
+
+        vm.requestDelete(target)
+        vm.confirmDelete(scope = "this_and_following")
+
+        assertTrue(api.deletedCardEntryIds.contains("e1"))
+        assertEquals(listOf<String?>("this_and_following"), api.deleteCardEntryScopes)
+    }
+
+    @Test
     fun `mudanca de dados global dispara refetch in-place`() {
         api.creditCards = listOf(card("c1"))
         api.cardEntries = listOf(entry("e1", "c1", "2026-06-25"))

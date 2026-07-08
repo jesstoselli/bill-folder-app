@@ -181,7 +181,13 @@ class CardsViewModel @Inject constructor(
         }
     }
 
-    fun confirmDelete() {
+    /**
+     * Confirma o delete. `scope` só é relevante numa assinatura (entry com
+     * templateId): "this" / "this_and_following" (snake_case, query param).
+     * Numa compra avulsa o caller passa null e o backend apaga só ela (+
+     * suas parcelas).
+     */
+    fun confirmDelete(scope: String? = null) {
         val current = _state.value
         if (current !is CardsUiState.Content) return
         val item = current.pendingDelete ?: return
@@ -194,7 +200,7 @@ class CardsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                cardsRepository.deleteEntry(item.id)
+                cardsRepository.deleteEntry(item.id, scope)
                 _state.update { s ->
                     if (s is CardsUiState.Content) {
                         s.copy(
