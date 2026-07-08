@@ -113,3 +113,53 @@ data class UpdateCardEntryRequest(
     @SerialName("categoryId") val categoryId: String? = null,
     @SerialName("notes")      val notes: String? = null,
 )
+
+/**
+ * "Assinatura" de cartão: template que gera um card entry recorrente a cada
+ * ciclo (ex: Netflix, Spotify). Alinhado com
+ * BillFolder.Application.Dtos.Recurrences.CreateCardEntryRecurrenceRequest (.NET).
+ *
+ * dayOfMonth (short no backend) = dia do vencimento no mês (1..31). Datas em
+ * ISO yyyy-MM-dd (DateOnly no backend). defaultAmount é decimal no backend —
+ * mapeado pra Double aqui como nas demais DTOs de valor.
+ */
+@Serializable
+data class CreateCardEntryRecurrenceRequest(
+    @SerialName("cardId")            val cardId: String,
+    @SerialName("defaultLabel")      val defaultLabel: String,
+    @SerialName("defaultAmount")     val defaultAmount: Double,
+    @SerialName("defaultCategoryId") val defaultCategoryId: String,
+    @SerialName("dayOfMonth")        val dayOfMonth: Int,
+    @SerialName("startDate")         val startDate: String,
+    @SerialName("endDate")           val endDate: String? = null,
+)
+
+@Serializable
+data class CardEntryRecurrenceResponse(
+    @SerialName("id")                  val id: String,
+    @SerialName("cardId")              val cardId: String,
+    @SerialName("cardName")            val cardName: String,
+    @SerialName("defaultLabel")        val defaultLabel: String,
+    @SerialName("defaultAmount")       val defaultAmount: Double,
+    @SerialName("defaultCategoryId")   val defaultCategoryId: String,
+    @SerialName("defaultCategoryName") val defaultCategoryName: String,
+    @SerialName("dayOfMonth")          val dayOfMonth: Int,
+    @SerialName("startDate")           val startDate: String,
+    @SerialName("endDate")             val endDate: String? = null,
+    @SerialName("isActive")            val isActive: Boolean,
+    @SerialName("createdAt")           val createdAt: String,
+    @SerialName("updatedAt")           val updatedAt: String,
+)
+
+/**
+ * POST /card-entries/{id}/update-amount — "reprecificar" uma assinatura.
+ * scope é enum JSON camelCase (JsonStringEnumConverter no backend): "this" ou
+ * "thisAndFollowing". ATENÇÃO: difere do scope do DELETE, que é query param
+ * snake_case ("this"/"this_and_following"). Modelado como String pura — o call
+ * site manda o literal exato.
+ */
+@Serializable
+data class UpdateCardSubscriptionAmountRequest(
+    @SerialName("amount") val amount: Double,
+    @SerialName("scope")  val scope: String,
+)

@@ -2,9 +2,11 @@ package com.billfolder.android.testutil
 
 import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.AuthResponse
+import com.billfolder.android.data.dto.CardEntryRecurrenceResponse
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CheckingAccountResponse
+import com.billfolder.android.data.dto.CreateCardEntryRecurrenceRequest
 import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreateCheckingAccountRequest
 import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
@@ -12,6 +14,7 @@ import com.billfolder.android.data.dto.CreateCycleAdjustmentRequest
 import com.billfolder.android.data.dto.CreateCycleRequest
 import com.billfolder.android.data.dto.CreateDailyExpenseRequest
 import com.billfolder.android.data.dto.CreateExpenseRequest
+import com.billfolder.android.data.dto.CreateExpenseRecurrenceRequest
 import com.billfolder.android.data.dto.CreateIncomeEntryRequest
 import com.billfolder.android.data.dto.CreateIncomeSourceRequest
 import com.billfolder.android.data.dto.CreateSavingsAccountRequest
@@ -20,7 +23,9 @@ import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.CycleAdjustmentResponse
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
+import com.billfolder.android.data.dto.ExpenseRecurrenceResponse
 import com.billfolder.android.data.dto.ExpenseResponse
+import com.billfolder.android.data.dto.PayOccurrenceRequest
 import com.billfolder.android.data.dto.ForgotPasswordRequest
 import com.billfolder.android.data.dto.ForgotPasswordResponse
 import com.billfolder.android.data.dto.HomeResponse
@@ -34,6 +39,7 @@ import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SavingsTransactionResponse
 import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
+import com.billfolder.android.data.dto.UpdateCardSubscriptionAmountRequest
 import com.billfolder.android.data.dto.UpdateCheckingAccountRequest
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import com.billfolder.android.data.dto.UpdateCycleAdjustmentRequest
@@ -84,6 +90,8 @@ class FakeBillFolderApi : BillFolderApi {
     var onUpdateDailyExpense: (String, UpdateDailyExpenseRequest) -> DailyExpenseResponse = { _, _ -> notConfigured("updateDailyExpense") }
     var onCreateExpense: (CreateExpenseRequest) -> ExpenseResponse = { notConfigured("createExpense") }
     var onUpdateExpense: (String, UpdateExpenseRequest) -> ExpenseResponse = { _, _ -> notConfigured("updateExpense") }
+    var onPayOccurrence: (String, PayOccurrenceRequest) -> ExpenseResponse = { _, _ -> notConfigured("payOccurrence") }
+    var onCreateExpenseRecurrence: (CreateExpenseRecurrenceRequest) -> ExpenseRecurrenceResponse = { notConfigured("createExpenseRecurrence") }
     var onCreateIncomeSource: (CreateIncomeSourceRequest) -> IncomeSourceResponse = { notConfigured("createIncomeSource") }
     var onUpdateIncomeSource: (String, UpdateIncomeSourceRequest) -> IncomeSourceResponse = { _, _ -> notConfigured("updateIncomeSource") }
     var onCreateIncomeEntry: (CreateIncomeEntryRequest) -> IncomeEntryResponse = { notConfigured("createIncomeEntry") }
@@ -92,6 +100,8 @@ class FakeBillFolderApi : BillFolderApi {
     var onUpdateCreditCard: (String, UpdateCreditCardAccountRequest) -> CreditCardAccountResponse = { _, _ -> notConfigured("updateCreditCard") }
     var onCreateCardEntry: (CreateCardEntryRequest) -> CardEntryResponse = { notConfigured("createCardEntry") }
     var onUpdateCardEntry: (String, UpdateCardEntryRequest) -> CardEntryResponse = { _, _ -> notConfigured("updateCardEntry") }
+    var onCreateCardEntryRecurrence: (CreateCardEntryRecurrenceRequest) -> CardEntryRecurrenceResponse = { notConfigured("createCardEntryRecurrence") }
+    var onUpdateCardSubscriptionAmount: (String, UpdateCardSubscriptionAmountRequest) -> CardEntryResponse = { _, _ -> notConfigured("updateCardSubscriptionAmount") }
     var onCreateSavingsAccount: (CreateSavingsAccountRequest) -> SavingsAccountResponse = { notConfigured("createSavingsAccount") }
     var onUpdateSavingsAccount: (String, UpdateSavingsAccountRequest) -> SavingsAccountResponse = { _, _ -> notConfigured("updateSavingsAccount") }
     var onCreateSavingsTransaction: (CreateSavingsTransactionRequest) -> SavingsTransactionResponse = { notConfigured("createSavingsTransaction") }
@@ -103,6 +113,8 @@ class FakeBillFolderApi : BillFolderApi {
     val deletedCycleAdjustmentIds = mutableListOf<String>()
     val deletedDailyExpenseIds = mutableListOf<String>()
     val deletedExpenseIds = mutableListOf<String>()
+    val deleteExpenseScopes = mutableListOf<String?>()
+    val deleteCardEntryScopes = mutableListOf<String?>()
     val deletedIncomeSourceIds = mutableListOf<String>()
     val deletedIncomeEntryIds = mutableListOf<String>()
     val deletedCreditCardIds = mutableListOf<String>()
@@ -112,6 +124,10 @@ class FakeBillFolderApi : BillFolderApi {
 
     // ---- Registro de chamadas de write (pra asserção) ----
     val createExpenseCalls = mutableListOf<CreateExpenseRequest>()
+    val payOccurrenceCalls = mutableListOf<Pair<String, PayOccurrenceRequest>>()
+    val createExpenseRecurrenceCalls = mutableListOf<CreateExpenseRecurrenceRequest>()
+    val createCardEntryRecurrenceCalls = mutableListOf<CreateCardEntryRecurrenceRequest>()
+    val updateCardSubscriptionAmountCalls = mutableListOf<Pair<String, UpdateCardSubscriptionAmountRequest>>()
     val createDailyExpenseCalls = mutableListOf<CreateDailyExpenseRequest>()
     val createIncomeEntryCalls = mutableListOf<CreateIncomeEntryRequest>()
     val createCardEntryCalls = mutableListOf<CreateCardEntryRequest>()
@@ -205,10 +221,23 @@ class FakeBillFolderApi : BillFolderApi {
     }
     override suspend fun updateExpense(id: String, request: UpdateExpenseRequest): ExpenseResponse =
         onUpdateExpense(id, request)
-    override suspend fun deleteExpense(id: String): Response<Unit> {
+    override suspend fun payOccurrence(id: String, request: PayOccurrenceRequest): ExpenseResponse {
+        payOccurrenceCalls += id to request
+        return onPayOccurrence(id, request)
+    }
+    override suspend fun deleteExpense(id: String, scope: String?): Response<Unit> {
         deletedExpenseIds += id
+        deleteExpenseScopes += scope
         if (deleteResult.isSuccessful) expenses = expenses.filterNot { it.id == id }
         return deleteResult
+    }
+    override suspend fun createExpenseRecurrence(request: CreateExpenseRecurrenceRequest): ExpenseRecurrenceResponse {
+        createExpenseRecurrenceCalls += request
+        return onCreateExpenseRecurrence(request)
+    }
+    override suspend fun createCardEntryRecurrence(request: CreateCardEntryRecurrenceRequest): CardEntryRecurrenceResponse {
+        createCardEntryRecurrenceCalls += request
+        return onCreateCardEntryRecurrence(request)
     }
 
     // ========================================================================
@@ -262,8 +291,13 @@ class FakeBillFolderApi : BillFolderApi {
     }
     override suspend fun updateCardEntry(id: String, request: UpdateCardEntryRequest): CardEntryResponse =
         onUpdateCardEntry(id, request)
-    override suspend fun deleteCardEntry(id: String): Response<Unit> {
+    override suspend fun updateCardSubscriptionAmount(id: String, request: UpdateCardSubscriptionAmountRequest): CardEntryResponse {
+        updateCardSubscriptionAmountCalls += id to request
+        return onUpdateCardSubscriptionAmount(id, request)
+    }
+    override suspend fun deleteCardEntry(id: String, scope: String?): Response<Unit> {
         deletedCardEntryIds += id
+        deleteCardEntryScopes += scope
         if (deleteResult.isSuccessful) cardEntries = cardEntries.filterNot { it.id == id }
         return deleteResult
     }

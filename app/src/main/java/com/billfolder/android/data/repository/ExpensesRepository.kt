@@ -3,6 +3,7 @@ package com.billfolder.android.data.repository
 import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.ExpenseResponse
+import com.billfolder.android.data.dto.PayOccurrenceRequest
 import com.billfolder.android.data.dto.UpdateExpenseRequest
 import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.data.sync.notifyingOnSuccess
@@ -49,11 +50,25 @@ class ExpensesRepository @Inject constructor(
     )
 
     /**
+     * "Dar baixa" numa ocorrência semanal de uma despesa provisionada
+     * (POST /expenses/{id}/pay-occurrence). Retorna o ExpenseResponse
+     * atualizado (occurrencesPaid/paidToDate incrementados). Notifica o
+     * bus em sucesso, como todo write.
+     */
+    suspend fun payOccurrence(
+        id: String,
+        request: PayOccurrenceRequest,
+    ): ExpenseResponse = notifier.notifyingOnSuccess { api.payOccurrence(id, request) }
+
+    /**
      * Backend retorna 204 em sucesso; convertemos non-2xx em HttpException
      * pra o caller propagar pra UI (mesmo padrão dos outros repos).
+     *
+     * scope (query, snake_case): "this" (default) ou "this_and_following" —
+     * numa despesa gerada por recorrência, decide se apaga só esta ou as futuras.
      */
-    suspend fun delete(id: String) = notifier.notifyingOnSuccess {
-        val response = api.deleteExpense(id)
+    suspend fun delete(id: String, scope: String? = null) = notifier.notifyingOnSuccess {
+        val response = api.deleteExpense(id, scope)
         if (!response.isSuccessful) {
             throw retrofit2.HttpException(response)
         }

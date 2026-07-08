@@ -3,9 +3,11 @@ package com.billfolder.android.data.api
 import com.billfolder.android.data.dto.AuthResponse
 import com.billfolder.android.data.dto.ForgotPasswordRequest
 import com.billfolder.android.data.dto.ForgotPasswordResponse
+import com.billfolder.android.data.dto.CardEntryRecurrenceResponse
 import com.billfolder.android.data.dto.CardEntryResponse
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CheckingAccountResponse
+import com.billfolder.android.data.dto.CreateCardEntryRecurrenceRequest
 import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreateDailyExpenseRequest
@@ -13,6 +15,7 @@ import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.CreateCheckingAccountRequest
 import com.billfolder.android.data.dto.CreateCycleAdjustmentRequest
 import com.billfolder.android.data.dto.CreateCycleRequest
+import com.billfolder.android.data.dto.CreateExpenseRecurrenceRequest
 import com.billfolder.android.data.dto.CreateIncomeEntryRequest
 import com.billfolder.android.data.dto.CreateIncomeSourceRequest
 import com.billfolder.android.data.dto.CreateSavingsAccountRequest
@@ -21,7 +24,9 @@ import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.CycleAdjustmentResponse
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
+import com.billfolder.android.data.dto.ExpenseRecurrenceResponse
 import com.billfolder.android.data.dto.ExpenseResponse
+import com.billfolder.android.data.dto.PayOccurrenceRequest
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.IncomeEntryResponse
 import com.billfolder.android.data.dto.IncomeSourceResponse
@@ -33,6 +38,7 @@ import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SavingsTransactionResponse
 import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
+import com.billfolder.android.data.dto.UpdateCardSubscriptionAmountRequest
 import com.billfolder.android.data.dto.UpdateCheckingAccountRequest
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import com.billfolder.android.data.dto.UpdateCycleAdjustmentRequest
@@ -248,8 +254,55 @@ interface BillFolderApi {
         @Body request: UpdateExpenseRequest,
     ): ExpenseResponse
 
+    /**
+     * "Dar baixa" numa ocorrência semanal de uma despesa provisionada.
+     * Retorna o ExpenseResponse atualizado. Só vale pra provisionadas —
+     * o PATCH normal com status=paid é rejeitado nelas (provisioned_expense).
+     */
+    @POST("expenses/{id}/pay-occurrence")
+    suspend fun payOccurrence(
+        @Path("id") id: String,
+        @Body request: PayOccurrenceRequest,
+    ): ExpenseResponse
+
+    /**
+     * scope (query, snake_case): "this" (default se omitido) ou
+     * "this_and_following". Numa despesa gerada por recorrência, controla se
+     * apaga só esta ocorrência ou esta + as futuras.
+     */
     @DELETE("expenses/{id}")
-    suspend fun deleteExpense(@Path("id") id: String): Response<Unit>
+    suspend fun deleteExpense(
+        @Path("id") id: String,
+        @Query("scope") scope: String? = null,
+    ): Response<Unit>
+
+    // ------------------------------------------------------------------------
+    // Expense recurrences (templates que geram despesas a cada ciclo)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Cria um template recorrente (ex: fisioterapia toda quarta). frequency
+     * é enum lowercase ("weekly"/"monthly"); pra weekly, weekday=0..6 e
+     * dueDay=null. Backend passa a gerar a despesa provisionada a cada ciclo.
+     */
+    @POST("expense-recurrences")
+    suspend fun createExpenseRecurrence(
+        @Body request: CreateExpenseRecurrenceRequest,
+    ): ExpenseRecurrenceResponse
+
+    // ------------------------------------------------------------------------
+    // Card entry recurrences (assinaturas — templates que geram card entries)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Cria um template de assinatura de cartão (ex: Netflix). dayOfMonth é o dia
+     * do vencimento no mês. Backend passa a gerar o card entry recorrente a cada
+     * ciclo.
+     */
+    @POST("card-entry-recurrences")
+    suspend fun createCardEntryRecurrence(
+        @Body request: CreateCardEntryRecurrenceRequest,
+    ): CardEntryRecurrenceResponse
 
     // ------------------------------------------------------------------------
     // Incomes — fontes recorrentes + entries individuais
@@ -339,8 +392,27 @@ interface BillFolderApi {
         @Body request: UpdateCardEntryRequest,
     ): CardEntryResponse
 
+    /**
+     * "Reprecificar" uma assinatura. scope (body, camelCase via
+     * JsonStringEnumConverter): "this" ou "thisAndFollowing". Retorna o card
+     * entry atualizado.
+     */
+    @POST("card-entries/{id}/update-amount")
+    suspend fun updateCardSubscriptionAmount(
+        @Path("id") id: String,
+        @Body request: UpdateCardSubscriptionAmountRequest,
+    ): CardEntryResponse
+
+    /**
+     * scope (query, snake_case): "this" (default se omitido) ou
+     * "this_and_following". Numa entry gerada por assinatura, controla se apaga
+     * só esta ocorrência ou esta + as futuras.
+     */
     @DELETE("card-entries/{id}")
-    suspend fun deleteCardEntry(@Path("id") id: String): Response<Unit>
+    suspend fun deleteCardEntry(
+        @Path("id") id: String,
+        @Query("scope") scope: String? = null,
+    ): Response<Unit>
 
     // ------------------------------------------------------------------------
     // Savings accounts (CRUD da conta poupança)

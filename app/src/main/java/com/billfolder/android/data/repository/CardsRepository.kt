@@ -6,6 +6,7 @@ import com.billfolder.android.data.dto.CreateCardEntryRequest
 import com.billfolder.android.data.dto.CreateCreditCardAccountRequest
 import com.billfolder.android.data.dto.CreditCardAccountResponse
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
+import com.billfolder.android.data.dto.UpdateCardSubscriptionAmountRequest
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.data.sync.notifyingOnSuccess
@@ -61,12 +62,26 @@ class CardsRepository @Inject constructor(
         notifier.notifyingOnSuccess { api.updateCardEntry(id, request) }
 
     /**
+     * "Reprecificar" uma assinatura (POST /card-entries/{id}/update-amount).
+     * scope no body é camelCase ("this"/"thisAndFollowing"). Retorna o card
+     * entry atualizado; notifica o bus em sucesso como todo write.
+     */
+    suspend fun updateSubscriptionAmount(
+        id: String,
+        request: UpdateCardSubscriptionAmountRequest,
+    ): CardEntryResponse =
+        notifier.notifyingOnSuccess { api.updateCardSubscriptionAmount(id, request) }
+
+    /**
      * Backend retorna 204 em sucesso. Importante: deletar uma entry
      * parcelada remove TODAS as installments associadas e recalcula
      * statements futuros — backend lida com a cascata.
+     *
+     * scope (query, snake_case): "this" (default) ou "this_and_following" —
+     * numa entry gerada por assinatura, decide se apaga só esta ou as futuras.
      */
-    suspend fun deleteEntry(id: String) = notifier.notifyingOnSuccess {
-        val response = api.deleteCardEntry(id)
+    suspend fun deleteEntry(id: String, scope: String? = null) = notifier.notifyingOnSuccess {
+        val response = api.deleteCardEntry(id, scope)
         if (!response.isSuccessful) {
             throw retrofit2.HttpException(response)
         }
