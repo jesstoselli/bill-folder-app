@@ -49,6 +49,8 @@ import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderSpeedDialFab
 import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.components.BillFolderPullToRefresh
+import com.billfolder.android.ui.components.RecurrenceScopeDialog
+import com.billfolder.android.ui.components.deleteLiteral
 import com.billfolder.android.ui.components.SpeedDialItem
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.expenses.components.ExpenseRow
@@ -198,12 +200,30 @@ fun ExpensesScreen(
         }
 
         // Dialog de confirmação de delete — atrelado ao pendingDelete do VM.
+        // Branch: despesa provisionada (recorrência) pede o escopo via
+        // RecurrenceScopeDialog e manda o literal snake_case; despesa normal
+        // segue o confirm simples (scope null).
         if (current is ExpensesUiState.Content && current.pendingDelete != null) {
-            DeleteExpenseDialog(
-                expenseLabel = current.pendingDelete.label,
-                onConfirm = viewModel::confirmDelete,
-                onCancel = viewModel::cancelDelete,
-            )
+            val pending = current.pendingDelete
+            if (pending.isProvisioned()) {
+                RecurrenceScopeDialog(
+                    title = stringResource(R.string.recurrence_scope_expense_title),
+                    message = stringResource(
+                        R.string.recurrence_scope_expense_message,
+                        pending.label,
+                    ),
+                    onScopeChosen = { choice ->
+                        viewModel.confirmDelete(scope = choice.deleteLiteral())
+                    },
+                    onDismiss = viewModel::cancelDelete,
+                )
+            } else {
+                DeleteExpenseDialog(
+                    expenseLabel = pending.label,
+                    onConfirm = { viewModel.confirmDelete() },
+                    onCancel = viewModel::cancelDelete,
+                )
+            }
         }
     }
 }

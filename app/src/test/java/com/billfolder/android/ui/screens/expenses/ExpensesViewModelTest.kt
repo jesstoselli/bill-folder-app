@@ -174,6 +174,37 @@ class ExpensesViewModelTest {
     }
 
     @Test
+    fun `confirmDelete sem scope manda null pro backend (despesa normal)`() {
+        val c = cycle("cy1", "2026-06-01", "2026-06-30")
+        api.onGetCurrentCycle = { c }
+        val target = expense("e1")
+        api.expenses = listOf(target)
+        api.cycles = listOf(c)
+        val vm = viewModel()
+
+        vm.requestDelete(target)
+        vm.confirmDelete()
+
+        assertEquals(listOf<String?>(null), api.deleteExpenseScopes)
+    }
+
+    @Test
+    fun `confirmDelete com scope this_and_following thread o literal snake_case`() {
+        val c = cycle("cy1", "2026-06-01", "2026-06-30")
+        api.onGetCurrentCycle = { c }
+        val target = expense("e1")
+        api.expenses = listOf(target)
+        api.cycles = listOf(c)
+        val vm = viewModel()
+
+        vm.requestDelete(target)
+        vm.confirmDelete(scope = "this_and_following")
+
+        assertTrue(api.deletedExpenseIds.contains("e1"))
+        assertEquals(listOf<String?>("this_and_following"), api.deleteExpenseScopes)
+    }
+
+    @Test
     fun `cancelDelete limpa o pendingDelete sem deletar`() {
         val c = cycle("cy1", "2026-06-01", "2026-06-30")
         api.onGetCurrentCycle = { c }

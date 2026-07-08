@@ -126,7 +126,12 @@ class ExpensesViewModel @Inject constructor(
         }
     }
 
-    fun confirmDelete() {
+    /**
+     * Confirma o delete. `scope` só é relevante numa despesa provisionada
+     * (recorrência): "this" / "this_and_following" (snake_case, query param).
+     * Numa despesa normal o caller passa null e o backend apaga só ela.
+     */
+    fun confirmDelete(scope: String? = null) {
         val current = _state.value
         if (current !is ExpensesUiState.Content) return
         val item = current.pendingDelete ?: return
@@ -139,7 +144,7 @@ class ExpensesViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                expensesRepository.delete(item.id)
+                expensesRepository.delete(item.id, scope)
                 _state.update { s ->
                     if (s is ExpensesUiState.Content) {
                         s.copy(
