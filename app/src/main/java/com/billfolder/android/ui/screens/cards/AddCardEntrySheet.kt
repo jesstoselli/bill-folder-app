@@ -1,16 +1,21 @@
 package com.billfolder.android.ui.screens.cards
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -171,32 +176,64 @@ fun AddCardEntrySheet(
             imeAction = ImeAction.Next,
         )
 
-        OutlinedTextField(
-            value = state.installmentsCount,
-            onValueChange = viewModel::onInstallmentsChange,
-            label = { Text(stringResource(R.string.add_card_entry_field_installments)) },
-            singleLine = true,
-            enabled = !state.isSaving && !isEditing,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Next,
-            ),
-            supportingText = {
-                // Preview do parcelamento: "6x R$ 116,65"
-                val previewText = computeInstallmentPreview(
-                    totalAmount = state.totalAmount,
-                    count = state.installmentsCount,
-                )
-                if (previewText != null) {
-                    Text(previewText)
+        // Toggle "assinatura mensal" — só em modo create. Quando ON, a compra
+        // vira um template de recorrência (1x/mês) e o campo de parcelas some.
+        if (!isEditing) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.add_card_entry_field_repeat_monthly),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.add_card_entry_field_repeat_monthly_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-            },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                cursorColor = MaterialTheme.colorScheme.primary,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
+                Switch(
+                    checked = state.repeatMonthly,
+                    onCheckedChange = viewModel::onRepeatMonthlyChange,
+                    enabled = !state.isSaving,
+                )
+            }
+        }
+
+        // Parcelas: escondido em assinatura (é sempre 1x). Também disabled em
+        // modo edit (backend não recalcula installments).
+        if (!state.repeatMonthly) {
+            OutlinedTextField(
+                value = state.installmentsCount,
+                onValueChange = viewModel::onInstallmentsChange,
+                label = { Text(stringResource(R.string.add_card_entry_field_installments)) },
+                singleLine = true,
+                enabled = !state.isSaving && !isEditing,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next,
+                ),
+                supportingText = {
+                    // Preview do parcelamento: "6x R$ 116,65"
+                    val previewText = computeInstallmentPreview(
+                        totalAmount = state.totalAmount,
+                        count = state.installmentsCount,
+                    )
+                    if (previewText != null) {
+                        Text(previewText)
+                    }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         BillFolderDropdown(
             label = stringResource(R.string.add_card_entry_field_category),

@@ -20,6 +20,8 @@
     <string name="common_new">novo</string>
 
     <!-- Speed Dial — atalhos de "adicionar" -->
+    <string name="speed_dial_new_expense">nova despesa</string>
+    <string name="speed_dial_new_weekly_recurrence">nova recorrência semanal</string>
     <string name="speed_dial_daily">avulsa</string>
     <string name="speed_dial_income">renda</string>
     <string name="speed_dial_expense">despesa</string>
@@ -246,6 +248,9 @@
     <string name="add_card_entry_installments_preview_format">%1$dx %2$s</string>
     <!-- Aviso mostrado em modo edit pra explicar campos disabled -->
     <string name="add_card_entry_edit_locked_hint">cartão, data, valor e parcelas não podem ser editados — pra mudar, deleta e cria de novo.</string>
+    <!-- Toggle "assinatura mensal": vira template de recorrência em vez de compra avulsa -->
+    <string name="add_card_entry_field_repeat_monthly">repetir todo mês</string>
+    <string name="add_card_entry_field_repeat_monthly_hint">cria uma assinatura que lança essa compra todo mês no dia da data escolhida.</string>
 
     <!-- Delete Card Entry (dialog) -->
     <string name="card_entry_delete_dialog_title">deletar compra?</string>
@@ -340,6 +345,37 @@
     <!-- Delete Expense (dialog) -->
     <string name="expense_delete_dialog_title">deletar despesa?</string>
     <string name="expense_delete_dialog_message">isso vai apagar \"%1$s\" permanentemente. essa ação não pode ser desfeita.</string>
+
+    <!-- Provisioned expense (baixa semanal) -->
+    <!-- Progresso na row: %1$s = label, %2$d = pagas, %3$d = total -->
+    <string name="expense_provisioned_progress_format">%1$s (%2$d/%3$d)</string>
+    <!-- Subtítulo hint: %1$s = valor restante formatado -->
+    <string name="expense_provisioned_remaining_format">faltam %1$s</string>
+
+    <!-- Pay Occurrence (sheet de "dar baixa") -->
+    <string name="pay_occurrence_title">dar baixa</string>
+    <string name="pay_occurrence_field_paid_date">data da baixa</string>
+    <string name="pay_occurrence_field_amount">valor da baixa</string>
+    <string name="pay_occurrence_field_account">conta de origem</string>
+    <string name="pay_occurrence_cta">confirmar baixa</string>
+    <!-- Cabeçalho: %1$s = pagas, %2$s = total -->
+    <string name="pay_occurrence_summary_format">%1$s de %2$s pagas</string>
+
+    <!-- Add Weekly Recurrence (sheet) -->
+    <string name="add_weekly_recurrence_title">nova recorrência semanal</string>
+    <string name="add_weekly_recurrence_field_label">descrição</string>
+    <string name="add_weekly_recurrence_field_amount">valor por sessão</string>
+    <string name="add_weekly_recurrence_field_weekday">dia da semana</string>
+    <string name="add_weekly_recurrence_field_category">categoria</string>
+    <string name="add_weekly_recurrence_field_start_date">início</string>
+    <string name="add_weekly_recurrence_validation_weekday_empty">Escolha um dia da semana.</string>
+    <string name="weekday_sunday">domingo</string>
+    <string name="weekday_monday">segunda-feira</string>
+    <string name="weekday_tuesday">terça-feira</string>
+    <string name="weekday_wednesday">quarta-feira</string>
+    <string name="weekday_thursday">quinta-feira</string>
+    <string name="weekday_friday">sexta-feira</string>
+    <string name="weekday_saturday">sábado</string>
 
     <!-- Pay Expense (sheet) -->
     <string name="pay_expense_title">marcar como paga</string>
