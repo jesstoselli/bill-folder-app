@@ -229,6 +229,12 @@ private fun Content(
 ) {
     val transactions = state.transactionsForSelectedAccount()
     val netFlow = state.netFlowForSelectedAccount()
+    // Saldo corrente da conta selecionada (inicial + todas as transações,
+    // calculado no backend). É o número principal do total card.
+    val currentBalance = state.accounts
+        .firstOrNull { it.id == state.selectedAccountId }
+        ?.currentBalance
+        ?: 0.0
 
     BillFolderPullToRefresh(
         isRefreshing = state.isRefreshing,
@@ -259,13 +265,12 @@ private fun Content(
         }
 
         item {
-            // Movimentado no ciclo. Total card mostra o |netFlow| em verde
-            // (cor do dinheiro), e o subtitle dá o sinal explícito —
-            // "+R$ 500" se entrou líquido, "−R$ 200" se saiu líquido,
-            // "neutro" se zero.
+            // Número principal: SALDO CORRENTE da conta (inicial + tudo que
+            // entrou/saiu). O movimento do ciclo desce pro subtítulo
+            // ("entrou/saiu líquido X no ciclo").
             BillFolderTotalCard(
-                total = kotlin.math.abs(netFlow),
-                label = stringResource(R.string.savings_total_label),
+                total = currentBalance,
+                label = stringResource(R.string.savings_balance_label),
                 subtitle = formatNetFlowSubtitle(netFlow),
             )
         }

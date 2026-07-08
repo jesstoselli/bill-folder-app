@@ -416,6 +416,7 @@
     <string name="savings_no_transactions_title">sem movimentações nessa poupança no ciclo.</string>
     <string name="savings_no_transactions_subtitle">toque no botão pra registrar a primeira movimentação.</string>
     <string name="savings_total_label">movimentado nessa poupança no ciclo</string>
+    <string name="savings_balance_label">saldo da poupança</string>
     <string name="savings_chip_add_new_label">nova</string>
     <!-- subtitle do total card por sinal do net flow -->
     <string name="savings_net_flow_inflow_format">entrou líquido %1$s no ciclo</string>

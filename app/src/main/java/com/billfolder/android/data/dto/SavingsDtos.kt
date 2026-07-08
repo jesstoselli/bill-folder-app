@@ -28,6 +28,8 @@ data class SavingsAccountResponse(
     @SerialName("branch")            val branch: String,
     @SerialName("accountNumber")     val accountNumber: String,
     @SerialName("initialBalance")    val initialBalance: Double,
+    // Saldo corrente = inicial + Σ transações com sinal (calculado no backend).
+    @SerialName("currentBalance")    val currentBalance: Double = 0.0,
     @SerialName("createdAt")         val createdAt: String,
     @SerialName("updatedAt")         val updatedAt: String,
 )
