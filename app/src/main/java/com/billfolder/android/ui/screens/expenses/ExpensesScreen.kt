@@ -13,17 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,8 +46,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
+import com.billfolder.android.ui.components.BillFolderSpeedDialFab
 import com.billfolder.android.ui.components.BillFolderTotalCard
 import com.billfolder.android.ui.components.BillFolderPullToRefresh
+import com.billfolder.android.ui.components.SpeedDialItem
 import com.billfolder.android.ui.components.SwipeToActionRow
 import com.billfolder.android.ui.screens.expenses.components.ExpenseRow
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
@@ -69,7 +69,9 @@ fun ExpensesScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    var showWeeklyRecurrenceSheet by remember { mutableStateOf(false) }
     var payingExpense by remember { mutableStateOf<ExpenseResponse?>(null) }
+    var payingOccurrence by remember { mutableStateOf<ExpenseResponse?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -96,20 +98,6 @@ fun ExpensesScreen(
                 ),
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddSheet = true },
-                shape = CircleShape,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.common_add),
-                )
-            }
-        },
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -126,7 +114,18 @@ fun ExpensesScreen(
                 is ExpensesUiState.Content -> ExpensesContent(
                     state = s,
                     onAddExpense = { showAddSheet = true },
-                    onPayExpense = { expense -> payingExpense = expense },
+                    // Branching do tap: provisionada em andamento → dar baixa
+                    // (PayOccurrenceSheet); despesa normal → fluxo de pagamento
+                    // cheio (PayExpenseSheet). Provisionada já 100% quitada não
+                    // dispara ação (o ExpenseRow passa onClick=null nesse caso
+                    // via a lista de paid, e aqui também é defensivo).
+                    onPayExpense = { expense ->
+                        if (expense.isProvisionedInProgress()) {
+                            payingOccurrence = expense
+                        } else {
+                            payingExpense = expense
+                        }
+                    },
                     onRequestDelete = viewModel::requestDelete,
                     onRequestEdit = viewModel::requestEdit,
                     onPreviousCycle = viewModel::goToPreviousCycle,
@@ -134,6 +133,23 @@ fun ExpensesScreen(
                     onPullRefresh = viewModel::pullRefresh,
                 )
             }
+
+            // Speed Dial: "nova despesa" (existente) + "nova recorrência
+            // semanal" (novo). Mesmo padrão da Home — overlay full-screen.
+            BillFolderSpeedDialFab(
+                items = listOf(
+                    SpeedDialItem(
+                        label = stringResource(R.string.speed_dial_new_weekly_recurrence),
+                        icon = Icons.Default.Event,
+                        onClick = { showWeeklyRecurrenceSheet = true },
+                    ),
+                    SpeedDialItem(
+                        label = stringResource(R.string.speed_dial_new_expense),
+                        icon = Icons.AutoMirrored.Filled.ReceiptLong,
+                        onClick = { showAddSheet = true },
+                    ),
+                ),
+            )
         }
 
         if (showAddSheet) {
@@ -143,10 +159,25 @@ fun ExpensesScreen(
             )
         }
 
+        if (showWeeklyRecurrenceSheet) {
+            AddWeeklyRecurrenceSheet(
+                onDismiss = { showWeeklyRecurrenceSheet = false },
+                onSaved = { viewModel.refresh() },
+            )
+        }
+
         payingExpense?.let { exp ->
             PayExpenseSheet(
                 expense = exp,
                 onDismiss = { payingExpense = null },
+                onSaved = { viewModel.refresh() },
+            )
+        }
+
+        payingOccurrence?.let { exp ->
+            PayOccurrenceSheet(
+                expense = exp,
+                onDismiss = { payingOccurrence = null },
                 onSaved = { viewModel.refresh() },
             )
         }

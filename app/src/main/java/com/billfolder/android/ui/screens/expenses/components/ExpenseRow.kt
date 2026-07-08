@@ -14,8 +14,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.billfolder.android.R
 import com.billfolder.android.data.dto.ExpenseResponse
+import com.billfolder.android.ui.screens.expenses.isProvisioned
+import com.billfolder.android.ui.screens.expenses.remainingProvisioned
 import com.billfolder.android.ui.screens.home.components.StatusChip
 import com.billfolder.android.ui.theme.MoneyRow
 import com.billfolder.android.ui.util.formatBrl
@@ -55,8 +59,20 @@ fun ExpenseRow(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                // Provisionada: anexa "(pagas/total)" ao label pra o user
+                // acompanhar "2/4 pagas" numa olhada.
+                val labelText = if (expense.isProvisioned()) {
+                    stringResource(
+                        R.string.expense_provisioned_progress_format,
+                        expense.label,
+                        expense.occurrencesPaid,
+                        expense.occurrencesTotal ?: 0,
+                    )
+                } else {
+                    expense.label
+                }
                 Text(
-                    text = expense.label,
+                    text = labelText,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -66,6 +82,18 @@ fun ExpenseRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // Provisionada: hint de quanto ainda falta pagar.
+                if (expense.isProvisioned()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.expense_provisioned_remaining_format,
+                            formatBrl(expense.remainingProvisioned()),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
