@@ -38,7 +38,7 @@ fun HomeListRow(
     subtitle: String,
     amount: Double,
     isoDate: String,
-    status: String,
+    status: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -78,8 +78,10 @@ fun HomeListRow(
                     style = MoneyRow,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Spacer(Modifier.height(6.dp))
-                StatusChip(status = status)
+                if (status != null) {
+                    Spacer(Modifier.height(6.dp))
+                    StatusChip(status = status)
+                }
             }
         }
     }
