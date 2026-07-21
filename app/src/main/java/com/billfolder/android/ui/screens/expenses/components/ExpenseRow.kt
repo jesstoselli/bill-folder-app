@@ -18,8 +18,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.ExpenseResponse
+import com.billfolder.android.ui.screens.expenses.displayAmount
 import com.billfolder.android.ui.screens.expenses.isProvisioned
-import com.billfolder.android.ui.screens.expenses.remainingProvisioned
+import com.billfolder.android.ui.screens.expenses.isProvisionedInProgress
 import com.billfolder.android.ui.screens.home.components.StatusChip
 import com.billfolder.android.ui.theme.MoneyRow
 import com.billfolder.android.ui.util.formatBrl
@@ -82,13 +83,16 @@ fun ExpenseRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                // Provisionada: hint de quanto ainda falta pagar.
-                if (expense.isProvisioned()) {
+                // Provisionada em andamento com baixas dadas: o número
+                // principal já mostra o reservado que resta, então aqui vai o
+                // total cheio do mês como contexto ("R$800 no mês"). Sem baixas,
+                // principal == mês cheio, então a linha seria redundante.
+                if (expense.isProvisionedInProgress() && expense.occurrencesPaid > 0) {
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = stringResource(
-                            R.string.expense_provisioned_remaining_format,
-                            formatBrl(expense.remainingProvisioned()),
+                            R.string.expense_provisioned_month_total_format,
+                            formatBrl(expense.expectedAmount),
                         ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -97,15 +101,9 @@ fun ExpenseRow(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    // Pra paid, mostramos actualAmount (se houver). Pra outras,
-                    // o expectedAmount.
-                    text = formatBrl(
-                        if (expense.status.equals("paid", ignoreCase = true)) {
-                            expense.actualAmount ?: expense.expectedAmount
-                        } else {
-                            expense.expectedAmount
-                        },
-                    ),
+                    // Paga → realizado; provisionada em andamento → reservado que
+                    // resta; demais → expectedAmount. (ver displayAmount)
+                    text = formatBrl(expense.displayAmount()),
                     style = MoneyRow,
                     color = MaterialTheme.colorScheme.onSurface,
                 )

@@ -30,7 +30,22 @@ fun ExpenseResponse.isProvisionedInProgress(): Boolean {
 
 /**
  * Quanto ainda falta pagar numa provisionada = expectedAmount − paidToDate,
- * nunca negativo. Usado no subtítulo "faltam R$X" da row.
+ * nunca negativo. É o "reservado que resta" do mês.
  */
 fun ExpenseResponse.remainingProvisioned(): Double =
     (expectedAmount - paidToDate).coerceAtLeast(0.0)
+
+/**
+ * Valor a exibir como número PRINCIPAL da row de despesa:
+ *  - paga → o realizado (actualAmount, ou expectedAmount se não houver);
+ *  - provisionada em andamento → o RESERVADO que ainda resta
+ *    (expectedAmount − paidToDate), pra refletir o que falta provisionar no
+ *    mês conforme as baixas vão sendo dadas (o total cheio do mês vira
+ *    contexto no subtítulo "R$X no mês");
+ *  - demais (normal pendente/atrasada) → o expectedAmount.
+ */
+fun ExpenseResponse.displayAmount(): Double = when {
+    status.equals("paid", ignoreCase = true) -> actualAmount ?: expectedAmount
+    isProvisionedInProgress() -> remainingProvisioned()
+    else -> expectedAmount
+}

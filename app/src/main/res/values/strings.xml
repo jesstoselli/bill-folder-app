@@ -379,8 +379,9 @@
     <!-- Provisioned expense (baixa semanal) -->
     <!-- Progresso na row: %1$s = label, %2$d = pagas, %3$d = total -->
     <string name="expense_provisioned_progress_format">%1$s (%2$d/%3$d)</string>
-    <!-- Subtítulo hint: %1$s = valor restante formatado -->
-    <string name="expense_provisioned_remaining_format">faltam %1$s</string>
+    <!-- Contexto na row de provisionada em andamento: %1$s = total do mês
+         formatado (o número principal já mostra o reservado que resta) -->
+    <string name="expense_provisioned_month_total_format">%1$s no mês</string>
 
     <!-- Pay Occurrence (sheet de "dar baixa") -->
     <string name="pay_occurrence_title">dar baixa</string>
