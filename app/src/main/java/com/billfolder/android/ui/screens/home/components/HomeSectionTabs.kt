@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -47,15 +49,25 @@ fun HomeSectionTabs(
             selected = selected == HomeSection.Recent,
             onClick = { onSelect(HomeSection.Recent) },
         )
-        SectionChip(
-            label = if (overdueCount > 0) {
-                stringResource(R.string.home_tab_overdue_count, overdueCount)
-            } else {
-                stringResource(R.string.home_tab_overdue)
-            },
-            selected = selected == HomeSection.Overdue,
-            onClick = { onSelect(HomeSection.Overdue) },
-        )
+        val overdueChip = @Composable {
+            SectionChip(
+                label = stringResource(R.string.home_tab_overdue),
+                selected = selected == HomeSection.Overdue,
+                onClick = { onSelect(HomeSection.Overdue) },
+            )
+        }
+        // Contador de atrasadas como badge (bolinha no topo-direito). O Badge
+        // do M3 já é vermelho (error), casando com a urgência. Sem itens, a
+        // pílula fica igual às outras.
+        if (overdueCount > 0) {
+            BadgedBox(
+                badge = { Badge { Text(overdueCount.toString()) } },
+            ) {
+                overdueChip()
+            }
+        } else {
+            overdueChip()
+        }
     }
 }
 

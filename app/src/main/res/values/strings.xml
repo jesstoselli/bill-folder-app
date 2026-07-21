@@ -91,8 +91,6 @@
     <string name="home_tab_upcoming">próximos</string>
     <string name="home_tab_recent">últimas</string>
     <string name="home_tab_overdue">atrasadas</string>
-    <!-- %1$d = qtd de atrasadas -->
-    <string name="home_tab_overdue_count">atrasadas · %1$d</string>
     <string name="home_upcoming_empty">nenhuma conta a vencer nesse ciclo</string>
     <string name="home_recent_empty">nenhuma despesa avulsa nesse ciclo</string>
     <string name="home_overdue_empty">nada atrasado 🎉</string>
