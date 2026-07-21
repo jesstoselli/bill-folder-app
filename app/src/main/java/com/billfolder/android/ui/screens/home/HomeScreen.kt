@@ -4,13 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -19,18 +17,18 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
+import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.HomeCardStatementDto
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.HomeUpcomingExpenseDto
@@ -51,6 +50,8 @@ import com.billfolder.android.ui.screens.cycles.CreateCycleSheet
 import com.billfolder.android.ui.screens.dailyexpenses.AddDailyExpenseSheet
 import com.billfolder.android.ui.screens.expenses.AddExpenseSheet
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
+import com.billfolder.android.ui.screens.home.components.HomeSection
+import com.billfolder.android.ui.screens.home.components.HomeSectionTabs
 import com.billfolder.android.ui.screens.income.AddIncomeEntrySheet
 import com.billfolder.android.ui.screens.savings.AddSavingsTransactionSheet
 import com.billfolder.android.ui.screens.home.components.HomeHeroCard
@@ -241,6 +242,7 @@ private fun HomeScaffold(
                 )
                 is HomeUiState.Content -> HomeContent(
                     data = s.data,
+                    recentDailyExpenses = s.recentDailyExpenses,
                     isRefreshing = s.isRefreshing,
                     onPullRefresh = onPullRefresh,
                     onPreviousCycle = onPreviousCycle,
@@ -319,6 +321,7 @@ private fun rememberSpeedDialItems(
 @Composable
 private fun HomeContent(
     data: HomeResponse,
+    recentDailyExpenses: List<DailyExpenseResponse>,
     isRefreshing: Boolean,
     onPullRefresh: () -> Unit,
     onPreviousCycle: () -> Unit,
@@ -327,6 +330,12 @@ private fun HomeContent(
     val cardStatementSubtitle = stringResource(R.string.home_list_card_statement_subtitle)
     val nextDue = collectNextDue(data, cardStatementSubtitle)
     val overdue = collectOverdue(data)
+
+    // Aba selecionada — sobrevive à rotação; reseta pra Próximos ao trocar de
+    // ciclo (o cycle.id muda → LaunchedEffect dispara). Na rotação o id não
+    // muda, então preserva a aba escolhida.
+    var selectedSection by rememberSaveable { mutableStateOf(HomeSection.Upcoming) }
+    LaunchedEffect(data.cycle.id) { selectedSection = HomeSection.Upcoming }
 
     BillFolderPullToRefresh(
         isRefreshing = isRefreshing,
@@ -357,35 +366,41 @@ private fun HomeContent(
             }
         }
 
-        if (nextDue.isNotEmpty()) {
-            item { SectionHeader(text = stringResource(R.string.home_section_next_due)) }
-            items(nextDue, key = { it.id }) { row ->
-                HomeListRow(
-                    title    = row.title,
-                    subtitle = row.subtitle,
-                    amount   = row.amount,
-                    isoDate  = row.dueDate,
-                    status   = row.status,
-                )
-            }
+        item {
+            HomeSectionTabs(
+                selected = selectedSection,
+                onSelect = { selectedSection = it },
+                overdueCount = overdue.size,
+            )
         }
 
-        if (overdue.isNotEmpty()) {
-            item {
-                SectionHeader(
-                    text = stringResource(R.string.home_section_overdue),
-                    trailingIcon = true,
-                )
-            }
-            items(overdue, key = { it.id }) { row ->
-                HomeListRow(
-                    title    = row.title,
-                    subtitle = row.subtitle,
-                    amount   = row.amount,
-                    isoDate  = row.dueDate,
-                    status   = row.status,
-                )
-            }
+        when (selectedSection) {
+            HomeSection.Upcoming ->
+                if (nextDue.isEmpty()) {
+                    item { TabEmptyState(text = stringResource(R.string.home_upcoming_empty)) }
+                } else {
+                    items(nextDue, key = { it.id }) { row -> ProjectionRow(row) }
+                }
+            HomeSection.Recent ->
+                if (recentDailyExpenses.isEmpty()) {
+                    item { TabEmptyState(text = stringResource(R.string.home_recent_empty)) }
+                } else {
+                    items(recentDailyExpenses, key = { it.id }) { d ->
+                        HomeListRow(
+                            title = d.label,
+                            subtitle = d.categoryName,
+                            amount = d.amount,
+                            isoDate = d.date,
+                            status = null,
+                        )
+                    }
+                }
+            HomeSection.Overdue ->
+                if (overdue.isEmpty()) {
+                    item { TabEmptyState(text = stringResource(R.string.home_overdue_empty)) }
+                } else {
+                    items(overdue, key = { it.id }) { row -> ProjectionRow(row) }
+                }
         }
 
         // Espaço extra no fim pra FAB não cobrir o último item.
@@ -395,26 +410,27 @@ private fun HomeContent(
 }
 
 @Composable
-private fun SectionHeader(text: String, trailingIcon: Boolean = false) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        if (trailingIcon) {
-            Spacer(Modifier.size(8.dp))
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = stringResource(R.string.home_overdue_warning_content_description),
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
+private fun ProjectionRow(row: HomeRowProjection) {
+    HomeListRow(
+        title = row.title,
+        subtitle = row.subtitle,
+        amount = row.amount,
+        isoDate = row.dueDate,
+        status = row.status,
+    )
+}
+
+@Composable
+private fun TabEmptyState(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+    )
 }
 
 // ----------------------------------------------------------------------------

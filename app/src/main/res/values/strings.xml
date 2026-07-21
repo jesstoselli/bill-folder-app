@@ -87,11 +87,6 @@
     <string name="auth_reset_restart_prefix">Não recebeu o código?</string>
     <string name="auth_reset_restart_link">Enviar de novo</string>
 
-    <!-- Home -->
-    <string name="home_section_next_due">próximos</string>
-    <string name="home_section_overdue">atrasados</string>
-    <string name="home_overdue_warning_content_description">despesas atrasadas</string>
-
     <!-- Home section tabs -->
     <string name="home_tab_upcoming">próximos</string>
     <string name="home_tab_recent">últimas</string>
