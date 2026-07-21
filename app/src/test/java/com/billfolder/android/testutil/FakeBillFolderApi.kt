@@ -87,6 +87,7 @@ class FakeBillFolderApi : BillFolderApi {
     var onCreateCycle: (CreateCycleRequest) -> CycleResponse = { notConfigured("createCycle") }
     var onCreateCycleAdjustment: (CreateCycleAdjustmentRequest) -> CycleAdjustmentResponse = { notConfigured("createCycleAdjustment") }
     var onUpdateCycleAdjustment: (String, UpdateCycleAdjustmentRequest) -> CycleAdjustmentResponse = { _, _ -> notConfigured("updateCycleAdjustment") }
+    var onGetDailyExpenses: ((String?, String?, String?) -> List<DailyExpenseResponse>)? = null
     var onCreateDailyExpense: (CreateDailyExpenseRequest) -> DailyExpenseResponse = { notConfigured("createDailyExpense") }
     var onUpdateDailyExpense: (String, UpdateDailyExpenseRequest) -> DailyExpenseResponse = { _, _ -> notConfigured("updateDailyExpense") }
     var onCreateExpense: (CreateExpenseRequest) -> ExpenseResponse = { notConfigured("createExpense") }
@@ -200,7 +201,7 @@ class FakeBillFolderApi : BillFolderApi {
     // Daily expenses
     // ========================================================================
     override suspend fun getDailyExpenses(from: String?, to: String?, categoryId: String?): List<DailyExpenseResponse> =
-        dailyExpenses
+        onGetDailyExpenses?.invoke(from, to, categoryId) ?: dailyExpenses
     override suspend fun createDailyExpense(request: CreateDailyExpenseRequest): DailyExpenseResponse {
         createDailyExpenseCalls += request
         return onCreateDailyExpense(request)

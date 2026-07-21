@@ -3,9 +3,11 @@ package com.billfolder.android.ui.screens.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CycleResponse
+import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.repository.AuthRepository
 import com.billfolder.android.data.repository.CyclesRepository
+import com.billfolder.android.data.repository.DailyExpensesRepository
 import com.billfolder.android.data.repository.HomeRepository
 import com.billfolder.android.data.repository.SavingsRepository
 import com.billfolder.android.data.sync.DataChangeNotifier
@@ -60,6 +62,12 @@ sealed interface HomeUiState {
          * dados visíveis e mostra só o spinner do PullToRefreshBox.
          */
         val isRefreshing: Boolean = false,
+        /**
+         * Avulsas do ciclo atual, da mais recente pra mais antiga. Alimenta a
+         * aba "Últimas". Best-effort: falha no fetch cai em lista vazia sem
+         * derrubar a Home.
+         */
+        val recentDailyExpenses: List<DailyExpenseResponse> = emptyList(),
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
     /** Ciclo ainda não criado pelo usuário — backend retorna 404/erro específico. */
@@ -72,6 +80,7 @@ class HomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val savingsRepository: SavingsRepository,
     private val cyclesRepository: CyclesRepository,
+    private val dailyExpensesRepository: DailyExpensesRepository,
     private val dataChangeNotifier: DataChangeNotifier,
 ) : ViewModel() {
 
@@ -109,11 +118,17 @@ class HomeViewModel @Inject constructor(
                     savingsRepository.listAccounts().isNotEmpty()
                 }.getOrDefault(false)
                 val cycles = runCatching { cyclesRepository.list() }.getOrDefault(emptyList())
+                val recentDaily = runCatching {
+                    dailyExpensesRepository
+                        .list(from = home.cycle.startDate, to = home.cycle.endDate)
+                        .recentFirst()
+                }.getOrDefault(emptyList())
                 _state.update {
                     (it as? HomeUiState.Content)?.copy(
                         data = home,
                         hasAnySavingsAccount = hasSavings,
                         cycles = cycles,
+                        recentDailyExpenses = recentDaily,
                         isRefreshing = false,
                     ) ?: it
                 }
@@ -152,9 +167,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val home = homeRepository.getHome(cycleId = target.id)
+                val recentDaily = runCatching {
+                    dailyExpensesRepository
+                        .list(from = home.cycle.startDate, to = home.cycle.endDate)
+                        .recentFirst()
+                }.getOrDefault(emptyList())
                 _state.update { s ->
                     (s as? HomeUiState.Content)?.copy(
                         data = home,
+                        recentDailyExpenses = recentDaily,
                         isSwitchingCycle = false,
                     ) ?: s
                 }
@@ -186,10 +207,16 @@ class HomeViewModel @Inject constructor(
                 val cycles = runCatching {
                     cyclesRepository.list()
                 }.getOrDefault(emptyList())
+                val recentDaily = runCatching {
+                    dailyExpensesRepository
+                        .list(from = home.cycle.startDate, to = home.cycle.endDate)
+                        .recentFirst()
+                }.getOrDefault(emptyList())
                 HomeUiState.Content(
                     data = home,
                     hasAnySavingsAccount = hasSavings,
                     cycles = cycles,
+                    recentDailyExpenses = recentDaily,
                 )
             } catch (e: HttpException) {
                 // Backend retorna 404 quando não há ciclo aberto pra esse usuário.

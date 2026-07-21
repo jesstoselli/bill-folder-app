@@ -6,9 +6,11 @@ import com.billfolder.android.data.dto.HomeExpenseBreakdownDto
 import com.billfolder.android.data.dto.HomeIncomeBreakdownDto
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.CycleResponse
+import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.repository.AuthRepository
 import com.billfolder.android.data.repository.CyclesRepository
+import com.billfolder.android.data.repository.DailyExpensesRepository
 import com.billfolder.android.data.repository.HomeRepository
 import com.billfolder.android.data.repository.SavingsRepository
 import com.billfolder.android.data.sync.DataChangeNotifier
@@ -35,6 +37,7 @@ class HomeViewModelTest {
     private val homeRepo = HomeRepository(api)
     private val savingsRepo = SavingsRepository(api, notifier)
     private val cyclesRepo = CyclesRepository(api, notifier)
+    private val dailyExpensesRepo = DailyExpensesRepository(api, notifier)
 
     // HomeViewModel só usa authRepository dentro de logout(), que estes testes
     // nunca exercitam. AuthRepository é uma classe final que exige TokenStorage
@@ -95,7 +98,13 @@ class HomeViewModelTest {
 
     private fun http500() = HttpException(Response.error<Any>(500, ResponseBody.create(null, "")))
 
-    private fun viewModel() = HomeViewModel(homeRepo, authRepo, savingsRepo, cyclesRepo, notifier)
+    private fun daily(id: String, date: String) = DailyExpenseResponse(
+        id = id, date = date, label = "avulsa $id", amount = 10.0,
+        categoryId = "cat", categoryName = "Cat", accountId = "acc", accountName = "Conta",
+        createdAt = "2026-06-01T00:00:00Z", updatedAt = "2026-06-01T00:00:00Z",
+    )
+
+    private fun viewModel() = HomeViewModel(homeRepo, authRepo, savingsRepo, cyclesRepo, dailyExpensesRepo, notifier)
 
     // ------------------------------------------------------------------------
     // Initial load
@@ -116,6 +125,30 @@ class HomeViewModelTest {
         assertEquals(1, state.cycles.size)
         assertFalse(state.isRefreshing)
         assertFalse(state.isSwitchingCycle)
+    }
+
+    @Test
+    fun `carrega recentDailyExpenses do ciclo ordenadas desc`() {
+        api.onGetHome = { home("c1") }
+        api.cycles = listOf(cycle("c1", "2026-06-01"))
+        api.dailyExpenses = listOf(daily("d1", "2026-06-05"), daily("d2", "2026-06-20"))
+
+        val state = viewModel().state.value as HomeUiState.Content
+
+        assertEquals(listOf("d2", "d1"), state.recentDailyExpenses.map { it.id })
+    }
+
+    @Test
+    fun `falha ao listar avulsas nao derruba a Home`() {
+        api.onGetHome = { home("c1") }
+        api.cycles = listOf(cycle("c1", "2026-06-01"))
+        api.onGetDailyExpenses = { _, _, _ -> throw http500() }
+
+        val state = viewModel().state.value
+
+        assertTrue(state is HomeUiState.Content)
+        state as HomeUiState.Content
+        assertTrue(state.recentDailyExpenses.isEmpty())
     }
 
     @Test
