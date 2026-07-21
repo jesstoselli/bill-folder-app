@@ -433,9 +433,12 @@ private data class HomeRowProjection(
 
 private fun HomeUpcomingExpenseDto.toRow() = HomeRowProjection(
     id = id,
-    title = label,
+    // Provisionada em andamento: anexa "(pagas/total)" ao label e mostra o
+    // reservado que resta como valor (não o total cheio do mês) — igual à
+    // tela de Despesas. "(K/N)" é simbólico, sem palavra traduzível.
+    title = if (isProvisionedInProgress()) "$label ($occurrencesPaid/$occurrencesTotal)" else label,
     subtitle = categoryName,
-    amount = expectedAmount,
+    amount = displayAmount(),
     dueDate = dueDate,
     status = status,
 )

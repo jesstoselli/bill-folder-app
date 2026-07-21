@@ -68,6 +68,11 @@ data class HomeUpcomingExpenseDto(
     @SerialName("expectedAmount") val expectedAmount: Double,
     @SerialName("status")         val status: String,
     @SerialName("categoryName")   val categoryName: String,
+    // Provisionamento (null/0 em despesas normais). Default pra retrocompat:
+    // backend antigo (sem os campos) → não-provisionada, mostra expectedAmount.
+    @SerialName("occurrencesTotal") val occurrencesTotal: Int? = null,
+    @SerialName("occurrencesPaid")  val occurrencesPaid: Int = 0,
+    @SerialName("paidToDate")       val paidToDate: Double = 0.0,
 )
 
 @Serializable
