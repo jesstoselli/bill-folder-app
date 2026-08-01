@@ -42,9 +42,10 @@ financeira própria, evitando duplicidade de obrigação e risco de contagem dup
   - `Closed` quando `today >= PeriodEnd`, desde que não esteja paga;
   - `Paid` quando a baixa foi registrada.
 - O próprio dia de fechamento já é um dia de fatura fechada.
-- Uma compra feita no dia do fechamento pertence à **próxima fatura**. A regra
-  de alocação passa de `purchaseDay <= closingDay` para
-  `purchaseDay < closingDay`.
+- Uma compra feita no dia efetivo do fechamento pertence à **próxima fatura**.
+  A comparação usa a data de fechamento já ajustada ao último dia real do mês
+  (ex.: cartão que fecha dia 31 fecha em 28/fevereiro). Compra anterior a essa
+  data fica na fatura atual; compra na data ou depois vai para a próxima.
 - A mudança de fronteira afeta apenas lançamentos materializados depois do
   deploy; parcelas históricas permanecem nas faturas existentes.
 - A baixa só pode ocorrer depois do fechamento.
@@ -93,9 +94,10 @@ o valor persistido ainda é `Open`.
 
 ### Fronteira de alocação
 
-`CardCycleCalculator.ComputeStatementForPurchase` passa a enviar compras feitas
-no `closingDay` para o período seguinte. O helper equivalente no app deve usar a
-mesma comparação, mantendo a navegação e o backend alinhados.
+`CardCycleCalculator.ComputeStatementForPurchase` passa a comparar a data da
+compra com o `PeriodEnd` candidato já clampeado. Compras feitas nessa data vão
+para o período seguinte. O helper equivalente no app deve usar a mesma
+comparação, mantendo a navegação e o backend alinhados inclusive em meses curtos.
 
 Faturas e parcelas já existentes não serão recalculadas ou movidas por
 migração.
