@@ -5,6 +5,7 @@ import com.billfolder.android.data.dto.ForgotPasswordRequest
 import com.billfolder.android.data.dto.ForgotPasswordResponse
 import com.billfolder.android.data.dto.CardEntryRecurrenceResponse
 import com.billfolder.android.data.dto.CardEntryResponse
+import com.billfolder.android.data.dto.CardStatementResponse
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CheckingAccountResponse
 import com.billfolder.android.data.dto.CreateCardEntryRecurrenceRequest
@@ -27,6 +28,7 @@ import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.ExpenseRecurrenceResponse
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.PayOccurrenceRequest
+import com.billfolder.android.data.dto.PayCardStatementRequest
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.IncomeEntryResponse
 import com.billfolder.android.data.dto.IncomeSourceResponse
@@ -246,6 +248,9 @@ interface BillFolderApi {
         @Query("categoryId") categoryId: String? = null,
     ): List<ExpenseResponse>
 
+    @GET("expenses/{id}")
+    suspend fun getExpense(@Path("id") id: String): ExpenseResponse
+
     @POST("expenses")
     suspend fun createExpense(@Body request: CreateExpenseRequest): ExpenseResponse
 
@@ -425,6 +430,21 @@ interface BillFolderApi {
         @Path("id") id: String,
         @Query("scope") scope: String? = null,
     ): Response<Unit>
+
+    // ------------------------------------------------------------------------
+    // Card statements (faturas)
+    // ------------------------------------------------------------------------
+
+    @GET("card-statements")
+    suspend fun getCardStatements(
+        @Query("cardId") cardId: String? = null,
+    ): List<CardStatementResponse>
+
+    @POST("card-statements/{id}/pay")
+    suspend fun payCardStatement(
+        @Path("id") id: String,
+        @Body request: PayCardStatementRequest,
+    ): CardStatementResponse
 
     // ------------------------------------------------------------------------
     // Savings accounts (CRUD da conta poupança)

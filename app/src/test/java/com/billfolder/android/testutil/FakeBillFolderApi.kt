@@ -4,6 +4,7 @@ import com.billfolder.android.data.api.BillFolderApi
 import com.billfolder.android.data.dto.AuthResponse
 import com.billfolder.android.data.dto.CardEntryRecurrenceResponse
 import com.billfolder.android.data.dto.CardEntryResponse
+import com.billfolder.android.data.dto.CardStatementResponse
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.CheckingAccountResponse
 import com.billfolder.android.data.dto.CreateCardEntryRecurrenceRequest
@@ -26,6 +27,7 @@ import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.ExpenseRecurrenceResponse
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.PayOccurrenceRequest
+import com.billfolder.android.data.dto.PayCardStatementRequest
 import com.billfolder.android.data.dto.ForgotPasswordRequest
 import com.billfolder.android.data.dto.ForgotPasswordResponse
 import com.billfolder.android.data.dto.HomeResponse
@@ -74,6 +76,7 @@ class FakeBillFolderApi : BillFolderApi {
     var cycleAdjustments: List<CycleAdjustmentResponse> = emptyList()
     var dailyExpenses: List<DailyExpenseResponse> = emptyList()
     var expenses: List<ExpenseResponse> = emptyList()
+    var cardStatements: List<CardStatementResponse> = emptyList()
     var incomeSources: List<IncomeSourceResponse> = emptyList()
     var incomeEntries: List<IncomeEntryResponse> = emptyList()
     var creditCards: List<CreditCardAccountResponse> = emptyList()
@@ -91,6 +94,7 @@ class FakeBillFolderApi : BillFolderApi {
     var onCreateDailyExpense: (CreateDailyExpenseRequest) -> DailyExpenseResponse = { notConfigured("createDailyExpense") }
     var onUpdateDailyExpense: (String, UpdateDailyExpenseRequest) -> DailyExpenseResponse = { _, _ -> notConfigured("updateDailyExpense") }
     var onCreateExpense: (CreateExpenseRequest) -> ExpenseResponse = { notConfigured("createExpense") }
+    var onGetExpense: (String) -> ExpenseResponse = { notConfigured("getExpense") }
     var onUpdateExpense: (String, UpdateExpenseRequest) -> ExpenseResponse = { _, _ -> notConfigured("updateExpense") }
     var onPayOccurrence: (String, PayOccurrenceRequest) -> ExpenseResponse = { _, _ -> notConfigured("payOccurrence") }
     var onRepriceProvisionedExpense: (String, RepriceProvisionedExpenseRequest) -> ExpenseResponse = { _, _ -> notConfigured("repriceProvisionedExpense") }
@@ -105,6 +109,7 @@ class FakeBillFolderApi : BillFolderApi {
     var onUpdateCardEntry: (String, UpdateCardEntryRequest) -> CardEntryResponse = { _, _ -> notConfigured("updateCardEntry") }
     var onCreateCardEntryRecurrence: (CreateCardEntryRecurrenceRequest) -> CardEntryRecurrenceResponse = { notConfigured("createCardEntryRecurrence") }
     var onUpdateCardSubscriptionAmount: (String, UpdateCardSubscriptionAmountRequest) -> CardEntryResponse = { _, _ -> notConfigured("updateCardSubscriptionAmount") }
+    var onPayCardStatement: (String, PayCardStatementRequest) -> CardStatementResponse = { _, _ -> notConfigured("payCardStatement") }
     var onCreateSavingsAccount: (CreateSavingsAccountRequest) -> SavingsAccountResponse = { notConfigured("createSavingsAccount") }
     var onUpdateSavingsAccount: (String, UpdateSavingsAccountRequest) -> SavingsAccountResponse = { _, _ -> notConfigured("updateSavingsAccount") }
     var onCreateSavingsTransaction: (CreateSavingsTransactionRequest) -> SavingsTransactionResponse = { notConfigured("createSavingsTransaction") }
@@ -127,11 +132,14 @@ class FakeBillFolderApi : BillFolderApi {
 
     // ---- Registro de chamadas de write (pra asserção) ----
     val createExpenseCalls = mutableListOf<CreateExpenseRequest>()
+    val getExpenseCalls = mutableListOf<String>()
     val payOccurrenceCalls = mutableListOf<Pair<String, PayOccurrenceRequest>>()
     val repriceProvisionedExpenseCalls = mutableListOf<Pair<String, RepriceProvisionedExpenseRequest>>()
     val createExpenseRecurrenceCalls = mutableListOf<CreateExpenseRecurrenceRequest>()
     val createCardEntryRecurrenceCalls = mutableListOf<CreateCardEntryRecurrenceRequest>()
     val updateCardSubscriptionAmountCalls = mutableListOf<Pair<String, UpdateCardSubscriptionAmountRequest>>()
+    val getCardStatementsCalls = mutableListOf<String?>()
+    val payCardStatementCalls = mutableListOf<Pair<String, PayCardStatementRequest>>()
     val createDailyExpenseCalls = mutableListOf<CreateDailyExpenseRequest>()
     val createIncomeEntryCalls = mutableListOf<CreateIncomeEntryRequest>()
     val createCardEntryCalls = mutableListOf<CreateCardEntryRequest>()
@@ -219,6 +227,10 @@ class FakeBillFolderApi : BillFolderApi {
     // ========================================================================
     override suspend fun getExpenses(from: String?, to: String?, status: String?, categoryId: String?): List<ExpenseResponse> =
         expenses
+    override suspend fun getExpense(id: String): ExpenseResponse {
+        getExpenseCalls += id
+        return onGetExpense(id)
+    }
     override suspend fun createExpense(request: CreateExpenseRequest): ExpenseResponse {
         createExpenseCalls += request
         return onCreateExpense(request)
@@ -308,6 +320,18 @@ class FakeBillFolderApi : BillFolderApi {
         deleteCardEntryScopes += scope
         if (deleteResult.isSuccessful) cardEntries = cardEntries.filterNot { it.id == id }
         return deleteResult
+    }
+
+    // ========================================================================
+    // Card statements
+    // ========================================================================
+    override suspend fun getCardStatements(cardId: String?): List<CardStatementResponse> {
+        getCardStatementsCalls += cardId
+        return cardStatements
+    }
+    override suspend fun payCardStatement(id: String, request: PayCardStatementRequest): CardStatementResponse {
+        payCardStatementCalls += id to request
+        return onPayCardStatement(id, request)
     }
 
     // ========================================================================

@@ -23,6 +23,8 @@ class ExpensesRepository @Inject constructor(
         categoryId: String? = null,
     ): List<ExpenseResponse> = api.getExpenses(from, to, status, categoryId)
 
+    suspend fun get(id: String): ExpenseResponse = api.getExpense(id)
+
     suspend fun create(request: CreateExpenseRequest): ExpenseResponse =
         notifier.notifyingOnSuccess { api.createExpense(request) }
 

@@ -2,6 +2,7 @@ package com.billfolder.android.data.repository
 
 import com.billfolder.android.data.dto.CardEntryRecurrenceResponse
 import com.billfolder.android.data.dto.CardEntryResponse
+import com.billfolder.android.data.dto.CardStatementResponse
 import com.billfolder.android.data.dto.CreateCardEntryRecurrenceRequest
 import com.billfolder.android.data.dto.CreateCycleRequest
 import com.billfolder.android.data.dto.CreateExpenseRecurrenceRequest
@@ -9,6 +10,7 @@ import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.ExpenseRecurrenceResponse
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.PayOccurrenceRequest
+import com.billfolder.android.data.dto.PayCardStatementRequest
 import com.billfolder.android.data.dto.UpdateCardSubscriptionAmountRequest
 import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.testutil.FakeBillFolderApi
@@ -34,6 +36,60 @@ class RepositoryNotifyTest {
         val before = notifier.changes.value
         block()
         assertEquals(before + 1, notifier.changes.value)
+    }
+
+    private fun statement(status: String) = CardStatementResponse(
+        id = "statement-1",
+        cardId = "card-1",
+        cardName = "Nubank",
+        periodStart = "2026-07-01",
+        periodEnd = "2026-07-31",
+        dueDate = "2026-08-08",
+        status = status,
+        paidDate = if (status == "paid") "2026-08-01" else null,
+        actualAmount = if (status == "paid") 800.0 else null,
+        paidFromAccountId = if (status == "paid") "account-1" else null,
+        paidFromAccountName = if (status == "paid") "Conta principal" else null,
+        totalAmount = 800.0,
+        installmentsCount = 3,
+        linkedExpenseId = if (status == "paid") "expense-1" else null,
+        createdAt = "2026-07-01T00:00:00Z",
+        updatedAt = "2026-08-01T00:00:00Z",
+    )
+
+    @Test
+    fun `payCardStatement dispara o bump e propaga request`() = runTest {
+        val expected = statement(status = "paid")
+        val request = PayCardStatementRequest(
+            paidDate = "2026-08-01",
+            actualAmount = 800.0,
+            paidFromAccountId = "account-1",
+        )
+        api.onPayCardStatement = { _, _ -> expected }
+        val before = notifier.changes.value
+
+        val result = CardStatementsRepository(api, notifier).pay("statement-1", request)
+
+        assertEquals(expected, result)
+        assertEquals(before + 1, notifier.changes.value)
+        assertEquals(listOf("statement-1" to request), api.payCardStatementCalls)
+    }
+
+    @Test
+    fun `get de despesa retorna detalhe sem disparar o bump`() = runTest {
+        val expected = ExpenseResponse(
+            id = "expense-1", dueDate = "2026-08-10", label = "Aluguel", expectedAmount = 1200.0,
+            status = "pending", categoryId = "housing", categoryName = "Moradia",
+            createdAt = "2026-07-01T00:00:00Z", updatedAt = "2026-07-01T00:00:00Z",
+        )
+        api.onGetExpense = { expected }
+        val before = notifier.changes.value
+
+        val result = ExpensesRepository(api, notifier).get("expense-1")
+
+        assertEquals(expected, result)
+        assertEquals(before, notifier.changes.value)
+        assertEquals(listOf("expense-1"), api.getExpenseCalls)
     }
 
     @Test

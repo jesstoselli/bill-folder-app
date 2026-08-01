@@ -43,6 +43,7 @@ data class HomeBalanceDto(
     @SerialName("expectedCardStatements") val expectedCardStatements: Double,
     @SerialName("dailyExpensesSpent")     val dailyExpensesSpent: Double,
     @SerialName("remaining")              val remaining: Double,
+    @SerialName("paidCardStatements")     val paidCardStatements: Double = 0.0,
 )
 
 @Serializable
