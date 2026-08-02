@@ -67,6 +67,18 @@ testes que referenciam a classe.
       `TemplateId = recurrence.Id`.
   - Idempotência por `(UserId, TemplateId, DueDate)` — como hoje.
 
+- **Não-retroativa (só Monthly, só na criação do template):** ao criar a
+  recorrência, **não** materializa a ocorrência do ciclo atual se o vencimento
+  já passou (`DueDate < hoje`). Ex: hoje dia 20, vencimento dia 5 → pula este
+  mês, começa no próximo. Quando um ciclo **novo** nasce (rollover), a ocorrência
+  daquele ciclo é gerada normalmente (a recorrência já existia antes dele — não
+  é retroativo). Implementação: `MaterializeAsync` recebe um parâmetro
+  `DateOnly? notBefore`; `ExpandForTemplateAsync` passa `hoje`,
+  `ExpandForCycleAsync` passa `null`. A regra só se aplica ao ramo Monthly
+  (Weekly/provisionada segue gerando o ciclo atual como hoje). A decisão fica num
+  predicado puro testável: `ShouldMaterializeMonthly(dueDate, notBefore) =
+  notBefore is null || dueDate >= notBefore`.
+
 ### 2. Helper de data mensal compartilhado
 
 Extrair a lógica `MonthlyDateInRange` + `ClampedDate` (hoje em
@@ -132,6 +144,9 @@ renderiza como despesa normal. ✅
 - `ExpenseRecurrenceExpansion` Monthly: materializa 1 despesa comum no
   `DueDay` do ciclo, sem campos de ocorrência; clamp de dia 31; idempotência;
   Monthly fora do range do ciclo não gera.
+- `ShouldMaterializeMonthly` (predicado puro): `notBefore == null` sempre gera;
+  `dueDate < notBefore` não gera; `dueDate >= notBefore` gera. (Determinístico —
+  `notBefore` passado explícito, sem `DateTime.Now`.)
 - Weekly segue verde (renome não muda comportamento).
 - Helper de data compartilhado: testes do card seguem verdes após extração.
 
