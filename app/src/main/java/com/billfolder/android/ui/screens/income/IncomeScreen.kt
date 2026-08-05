@@ -232,15 +232,11 @@ private fun IncomeContent(
     val entries = state.entries
     val sources = state.sources
 
-    // Total esperado: soma todos os entries do ciclo (exceto notOccurred)
-    val expectedTotal = entries
-        .filter { !it.status.equals("notOccurred", ignoreCase = true) }
-        .sumOf { it.expectedAmount }
-
-    // Recebido: só os que efetivamente foram received
-    val receivedTotal = entries
-        .filter { it.status.equals("received", ignoreCase = true) }
-        .sumOf { it.actualAmount ?: it.expectedAmount }
+    // Totais pelo valor EFETIVO de cada entry (recebida vale o actualAmount).
+    // Ver IncomeTotals.kt — antes o esperado somava expectedAmount cru, então
+    // renda reduzida no mês (ex: férias) contava cheia mesmo já recebida menor.
+    val expectedTotal = incomeExpectedTotal(entries)
+    val receivedTotal = incomeReceivedTotal(entries)
 
     BillFolderPullToRefresh(
         isRefreshing = state.isRefreshing,
