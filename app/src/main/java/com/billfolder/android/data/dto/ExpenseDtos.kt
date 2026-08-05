@@ -24,6 +24,7 @@ data class ExpenseResponse(
     @SerialName("categoryId")            val categoryId: String,
     @SerialName("categoryName")          val categoryName: String,
     @SerialName("linkedCardStatementId") val linkedCardStatementId: String? = null,
+    @SerialName("templateId")            val templateId: String? = null,
     @SerialName("notes")                 val notes: String? = null,
     // Provisionamento por baixa (ex: fisioterapia semanal). Numa despesa
     // "normal", occurrenceAmount/occurrencesTotal são null. Numa provisionada,

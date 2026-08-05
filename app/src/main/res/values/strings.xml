@@ -254,6 +254,8 @@
     <!-- Toggle "assinatura mensal": vira template de recorrência em vez de compra avulsa -->
     <string name="add_card_entry_field_repeat_monthly">repetir todo mês</string>
     <string name="add_card_entry_field_repeat_monthly_hint">cria uma assinatura que lança essa compra todo mês no dia da data escolhida.</string>
+    <string name="add_expense_repeat_monthly">repetir todo mês</string>
+    <string name="add_expense_repeat_monthly_hint">conta fixa: repete todo mês no dia do vencimento. desligue pra uma despesa de uma vez só.</string>
 
     <!-- Delete Card Entry (dialog) -->
     <string name="card_entry_delete_dialog_title">deletar compra?</string>

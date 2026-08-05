@@ -221,7 +221,7 @@ fun ExpensesScreen(
         // segue o confirm simples (scope null).
         if (current is ExpensesUiState.Content && current.pendingDelete != null) {
             val pending = current.pendingDelete
-            if (pending.isProvisioned()) {
+            if (pending.isRecurring()) {
                 RecurrenceScopeDialog(
                     title = stringResource(R.string.recurrence_scope_expense_title),
                     message = stringResource(

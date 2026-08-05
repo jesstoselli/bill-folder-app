@@ -1,6 +1,12 @@
 package com.billfolder.android.ui.screens.expenses
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -158,5 +164,33 @@ fun AddExpenseSheet(
             ),
             modifier = Modifier.fillMaxWidth(),
         )
+
+        // Toggle "repetir todo mês" — só no modo criar. Ligado por padrão: a
+        // despesa vira uma conta fixa mensal. Desligado = despesa de uma vez.
+        if (!isEditing) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.add_expense_repeat_monthly),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.add_expense_repeat_monthly_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = state.repeatMonthly,
+                    onCheckedChange = viewModel::onRepeatMonthlyChange,
+                    enabled = !state.isSaving,
+                )
+            }
+        }
     }
 }

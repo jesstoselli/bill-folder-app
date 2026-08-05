@@ -2,6 +2,7 @@ package com.billfolder.android.ui.screens.expenses
 
 import com.billfolder.android.data.dto.CategoryDto
 import com.billfolder.android.data.dto.ExpenseResponse
+import com.billfolder.android.data.repository.ExpenseRecurrencesRepository
 import com.billfolder.android.data.repository.ExpensesRepository
 import com.billfolder.android.data.repository.ReferenceDataRepository
 import com.billfolder.android.data.sync.DataChangeNotifier
@@ -23,6 +24,7 @@ class AddExpenseViewModelTest {
     private val notifier = DataChangeNotifier()
     private val referenceDataRepo = ReferenceDataRepository(api)
     private val expensesRepo = ExpensesRepository(api, notifier)
+    private val expenseRecurrencesRepo = ExpenseRecurrencesRepository(api, notifier)
 
     private fun category(id: String, order: Int) = CategoryDto(
         id = id, key = "key-$id", namePt = "Cat $id", isSystem = true, displayOrder = order,
@@ -34,7 +36,13 @@ class AddExpenseViewModelTest {
         createdAt = "2026-06-01T00:00:00Z", updatedAt = "2026-06-01T00:00:00Z",
     )
 
-    private fun viewModel() = AddExpenseViewModel(referenceDataRepo, expensesRepo)
+    private fun recurrenceResponse() = com.billfolder.android.data.dto.ExpenseRecurrenceResponse(
+        id = "rec-1", defaultLabel = "Aluguel", defaultAmount = 1500.0, defaultCategoryId = "cat1",
+        frequency = "monthly", dueDay = 5, weekday = null, startDate = "2026-08-05",
+        createdAt = "2026-08-01T00:00:00Z", updatedAt = "2026-08-01T00:00:00Z",
+    )
+
+    private fun viewModel() = AddExpenseViewModel(referenceDataRepo, expensesRepo, expenseRecurrencesRepo)
 
     // ---- init loads reference data --------------------------------------------
 
@@ -96,7 +104,7 @@ class AddExpenseViewModelTest {
     // ---- VALID submit ---------------------------------------------------------
 
     @Test
-    fun `submit valido chama o repo e sinaliza sucesso`() {
+    fun `submit valido sem repetir cria despesa unica`() {
         api.categories = listOf(category("cat1", 1))
         api.onCreateExpense = { expenseResponse("new-1") }
         val vm = viewModel()
@@ -104,6 +112,7 @@ class AddExpenseViewModelTest {
         vm.onAmountChange("1234,50")
         vm.onCategoryChange("cat1")
         vm.onNotesChange("mensal")
+        vm.onRepeatMonthlyChange(false)
 
         vm.submit("label vazio", "valor inválido", "categoria vazia")
 
@@ -119,6 +128,30 @@ class AddExpenseViewModelTest {
         assertTrue(state.savedSuccessfully)
         assertFalse(state.isSaving)
         assertNull(state.errorMessage)
+    }
+
+    @Test
+    fun `submit com repetir ligado por padrao cria recorrencia mensal`() {
+        api.categories = listOf(category("cat1", 1))
+        api.onCreateExpenseRecurrence = { recurrenceResponse() }
+        val vm = viewModel()
+        vm.onLabelChange("Aluguel")
+        vm.onAmountChange("1500,00")
+        vm.onCategoryChange("cat1")
+        vm.onDueDateChange("2026-08-05")
+        // repeatMonthly fica no default (true)
+
+        vm.submit("label vazio", "valor inválido", "categoria vazia")
+
+        assertTrue(api.createExpenseCalls.isEmpty())
+        assertEquals(1, api.createExpenseRecurrenceCalls.size)
+        val req = api.createExpenseRecurrenceCalls.first()
+        assertEquals("monthly", req.frequency)
+        assertEquals(5, req.dueDay)
+        assertNull(req.weekday)
+        assertEquals(1500.0, req.defaultAmount, 0.0001)
+        assertEquals("2026-08-05", req.startDate)
+        assertTrue(vm.state.value.savedSuccessfully)
     }
 
     // ---- prefill / edit -------------------------------------------------------

@@ -3,9 +3,11 @@ package com.billfolder.android.ui.screens.expenses
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CategoryDto
+import com.billfolder.android.data.dto.CreateExpenseRecurrenceRequest
 import com.billfolder.android.data.dto.CreateExpenseRequest
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.UpdateExpenseRequest
+import com.billfolder.android.data.repository.ExpenseRecurrencesRepository
 import com.billfolder.android.data.repository.ExpensesRepository
 import com.billfolder.android.data.repository.ReferenceDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,6 +38,9 @@ data class AddExpenseFormState(
     val amount: String = "",
     val selectedCategoryId: String? = null,
     val notes: String = "",
+    // "repetir todo mês" — ligado por padrão. Só vale no modo criar; cria uma
+    // recorrência mensal em vez de uma despesa única.
+    val repeatMonthly: Boolean = true,
 
     val categories: List<CategoryDto> = emptyList(),
     val isLoadingReferences: Boolean = true,
@@ -51,6 +56,7 @@ data class AddExpenseFormState(
 class AddExpenseViewModel @Inject constructor(
     private val referenceDataRepository: ReferenceDataRepository,
     private val expensesRepository: ExpensesRepository,
+    private val expenseRecurrencesRepository: ExpenseRecurrencesRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AddExpenseFormState())
@@ -84,6 +90,7 @@ class AddExpenseViewModel @Inject constructor(
     fun onAmountChange(value: String) = _state.update { it.copy(amount = value) }
     fun onCategoryChange(id: String) = _state.update { it.copy(selectedCategoryId = id) }
     fun onNotesChange(value: String) = _state.update { it.copy(notes = value) }
+    fun onRepeatMonthlyChange(value: Boolean) = _state.update { it.copy(repeatMonthly = value) }
 
     /**
      * Preenche o form com uma despesa existente — modo edit. Idempotente
@@ -138,6 +145,20 @@ class AddExpenseViewModel @Inject constructor(
                         notes = current.notes.trim(),
                     )
                     expensesRepository.update(current.editingId, request)
+                } else if (current.repeatMonthly) {
+                    // Recorrência mensal: cria o template (que expande e
+                    // materializa o ciclo atual + futuros). dueDay = dia do
+                    // vencimento escolhido.
+                    val request = CreateExpenseRecurrenceRequest(
+                        defaultLabel = current.label.trim(),
+                        defaultAmount = parseAmount(current.amount)!!,
+                        defaultCategoryId = current.selectedCategoryId!!,
+                        frequency = "monthly",
+                        dueDay = current.dueDate.takeLast(2).toInt(),
+                        weekday = null,
+                        startDate = current.dueDate,
+                    )
+                    expenseRecurrencesRepository.create(request)
                 } else {
                     val request = CreateExpenseRequest(
                         dueDate = current.dueDate,

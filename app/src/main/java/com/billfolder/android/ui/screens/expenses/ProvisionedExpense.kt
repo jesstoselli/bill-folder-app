@@ -17,6 +17,10 @@ import com.billfolder.android.data.dto.ExpenseResponse
 /** true quando a despesa é provisionada (tem template de ocorrências). */
 fun ExpenseResponse.isProvisioned(): Boolean = occurrencesTotal != null
 
+/** true quando a despesa veio de uma recorrência (semanal provisionada OU
+ *  mensal comum) — tem template. Usado pra oferecer o escopo no delete. */
+fun ExpenseResponse.isRecurring(): Boolean = templateId != null
+
 /**
  * true quando é provisionada E ainda há ocorrências a dar baixa
  * (occurrencesPaid < occurrencesTotal). É o gatilho pra abrir o
