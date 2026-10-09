@@ -533,10 +533,7 @@ private fun collectNextDue(data: HomeResponse, cardStatementSubtitle: String): L
 }
 
 private fun collectOverdue(data: HomeResponse): List<HomeRowProjection> =
-    data.upcomingExpenses
-        .filter { it.status.equals("overdue", ignoreCase = true) }
-        .map { it.toRow() }
-        .sortedBy { it.dueDate }
+    data.overdueExpenseItems().map { it.toRow() }
 
 // ----------------------------------------------------------------------------
 // Loading / Error / Empty states

@@ -1,5 +1,6 @@
 package com.billfolder.android.ui.screens.home
 
+import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.HomeUpcomingExpenseDto
 
 /**
@@ -35,3 +36,13 @@ fun HomeUpcomingExpenseDto.displayAmount(): Double =
     } else {
         expectedAmount
     }
+
+/**
+ * Despesas atrasadas do ciclo, por vencimento. Lê overdueExpenses (contrato
+ * atual) e também as "overdue" que ainda vierem em upcomingExpenses (backend
+ * antigo, que mandava tudo numa lista só) — sem duplicar.
+ */
+fun HomeResponse.overdueExpenseItems(): List<HomeUpcomingExpenseDto> =
+    (overdueExpenses + upcomingExpenses.filter { it.status.equals("overdue", ignoreCase = true) })
+        .distinctBy { it.id }
+        .sortedBy { it.dueDate }

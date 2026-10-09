@@ -18,6 +18,9 @@ data class HomeResponse(
     @SerialName("incomeBreakdown")   val incomeBreakdown: HomeIncomeBreakdownDto,
     @SerialName("expenseBreakdown")  val expenseBreakdown: HomeExpenseBreakdownDto,
     @SerialName("upcomingExpenses")  val upcomingExpenses: List<HomeUpcomingExpenseDto>,
+    // Backend separa as atrasadas numa lista própria; upcomingExpenses deixou
+    // de trazê-las. Default empty pra parsear resposta de backend antigo.
+    @SerialName("overdueExpenses")   val overdueExpenses: List<HomeUpcomingExpenseDto> = emptyList(),
     @SerialName("cardStatementsInCycle") val cardStatementsInCycle: List<HomeCardStatementDto>,
     // Default empty pra retrocompat: se um build antigo do app pegar uma
     // resposta nova do backend, ainda parseia. Inverso (backend antigo + app
