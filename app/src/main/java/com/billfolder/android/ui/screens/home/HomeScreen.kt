@@ -49,6 +49,9 @@ import com.billfolder.android.ui.screens.cards.AddCardEntrySheet
 import com.billfolder.android.ui.screens.cycles.CreateCycleSheet
 import com.billfolder.android.ui.screens.dailyexpenses.AddDailyExpenseSheet
 import com.billfolder.android.ui.screens.expenses.AddExpenseSheet
+import com.billfolder.android.ui.screens.expenses.PayExpenseSheet
+import com.billfolder.android.ui.screens.expenses.PayOccurrenceSheet
+import com.billfolder.android.ui.screens.expenses.isProvisionedInProgress
 import com.billfolder.android.ui.screens.home.components.CycleNavigator
 import com.billfolder.android.ui.screens.home.components.HomeSection
 import com.billfolder.android.ui.screens.home.components.HomeSectionTabs
@@ -75,6 +78,7 @@ import com.billfolder.android.ui.theme.PillShape
 fun HomeScreen(
     onLogout: () -> Unit,
     onMenuClick: () -> Unit,
+    onOpenCard: (cardId: String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -114,8 +118,29 @@ fun HomeScreen(
         onSpeedDialSavings = { showAddSavingsTransactionSheet = true },
         onPreviousCycle = viewModel::goToPreviousCycle,
         onNextCycle = viewModel::goToNextCycle,
+        onOpenExpense = viewModel::openPayment,
+        onOpenCard = onOpenCard,
         savingsShortcutEnabled = savingsShortcutEnabled,
     )
+
+    // Mesmo branching do tap na tela de Despesas: provisionada em andamento →
+    // dar baixa numa ocorrência; demais → pagamento cheio. onSaved vazio: o
+    // write notifica o DataChangeNotifier e a Home já refaz o fetch in-place.
+    (state as? HomeUiState.Content)?.payingExpense?.let { exp ->
+        if (exp.isProvisionedInProgress()) {
+            PayOccurrenceSheet(
+                expense = exp,
+                onDismiss = viewModel::closePayment,
+                onSaved = {},
+            )
+        } else {
+            PayExpenseSheet(
+                expense = exp,
+                onDismiss = viewModel::closePayment,
+                onSaved = {},
+            )
+        }
+    }
 
     // Sheets renderizados fora do drawer pra ficar em cima de tudo.
     if (showAddDailySheet) {
@@ -215,6 +240,8 @@ private fun HomeScaffold(
     onSpeedDialSavings: () -> Unit,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
+    onOpenExpense: (String) -> Unit,
+    onOpenCard: (String) -> Unit,
     savingsShortcutEnabled: Boolean,
 ) {
     Scaffold(
@@ -247,6 +274,8 @@ private fun HomeScaffold(
                     onPullRefresh = onPullRefresh,
                     onPreviousCycle = onPreviousCycle,
                     onNextCycle = onNextCycle,
+                    onOpenExpense = onOpenExpense,
+                    onOpenCard = onOpenCard,
                 )
             }
 
@@ -326,6 +355,8 @@ private fun HomeContent(
     onPullRefresh: () -> Unit,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
+    onOpenExpense: (String) -> Unit,
+    onOpenCard: (String) -> Unit,
 ) {
     val cardStatementSubtitle = stringResource(R.string.home_list_card_statement_subtitle)
     val nextDue = collectNextDue(data, cardStatementSubtitle)
@@ -379,7 +410,9 @@ private fun HomeContent(
                 if (nextDue.isEmpty()) {
                     item { TabEmptyState(text = stringResource(R.string.home_upcoming_empty)) }
                 } else {
-                    items(nextDue, key = { it.id }) { row -> ProjectionRow(row) }
+                    items(nextDue, key = { it.id }) { row ->
+                        ProjectionRow(row, onOpenExpense = onOpenExpense, onOpenCard = onOpenCard)
+                    }
                 }
             HomeSection.Recent ->
                 if (recentDailyExpenses.isEmpty()) {
@@ -399,7 +432,9 @@ private fun HomeContent(
                 if (overdue.isEmpty()) {
                     item { TabEmptyState(text = stringResource(R.string.home_overdue_empty)) }
                 } else {
-                    items(overdue, key = { it.id }) { row -> ProjectionRow(row) }
+                    items(overdue, key = { it.id }) { row ->
+                        ProjectionRow(row, onOpenExpense = onOpenExpense, onOpenCard = onOpenCard)
+                    }
                 }
         }
 
@@ -410,13 +445,23 @@ private fun HomeContent(
 }
 
 @Composable
-private fun ProjectionRow(row: HomeRowProjection) {
+private fun ProjectionRow(
+    row: HomeRowProjection,
+    onOpenExpense: (String) -> Unit,
+    onOpenCard: (String) -> Unit,
+) {
     HomeListRow(
         title = row.title,
         subtitle = row.subtitle,
         amount = row.amount,
         isoDate = row.dueDate,
         status = row.status,
+        onClick = {
+            when (val t = row.target) {
+                is HomeRowTarget.Expense -> onOpenExpense(t.expenseId)
+                is HomeRowTarget.CardStatement -> onOpenCard(t.cardId)
+            }
+        },
     )
 }
 
@@ -445,10 +490,18 @@ private data class HomeRowProjection(
     val amount: Double,
     val dueDate: String,
     val status: String,
+    val target: HomeRowTarget,
 )
+
+/** Pra onde o tap numa row leva. */
+private sealed interface HomeRowTarget {
+    data class Expense(val expenseId: String) : HomeRowTarget
+    data class CardStatement(val cardId: String) : HomeRowTarget
+}
 
 private fun HomeUpcomingExpenseDto.toRow() = HomeRowProjection(
     id = id,
+    target = HomeRowTarget.Expense(id),
     // Provisionada em andamento: anexa "(pagas/total)" ao label e mostra o
     // reservado que resta como valor (não o total cheio do mês) — igual à
     // tela de Despesas. "(K/N)" é simbólico, sem palavra traduzível.
@@ -466,6 +519,7 @@ private fun HomeCardStatementDto.toRow(subtitle: String) = HomeRowProjection(
     amount = totalAmount,
     dueDate = dueDate,
     status = status,
+    target = HomeRowTarget.CardStatement(cardId),
 )
 
 private fun collectNextDue(data: HomeResponse, cardStatementSubtitle: String): List<HomeRowProjection> {

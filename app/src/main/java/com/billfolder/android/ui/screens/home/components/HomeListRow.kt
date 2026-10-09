@@ -39,13 +39,18 @@ fun HomeListRow(
     amount: Double,
     isoDate: String,
     status: String? = null,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
+        onClick = onClick ?: {},
+        enabled = onClick != null,
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            // Rows sem ação (avulsas) não devem parecer "desabilitadas".
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
     ) {
         Row(

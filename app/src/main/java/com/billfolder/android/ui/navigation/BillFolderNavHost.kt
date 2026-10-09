@@ -142,6 +142,14 @@ fun BillFolderNavHost(
                         }
                     },
                     onMenuClick = openDrawer,
+                    onOpenCard = { cardId ->
+                        // Mesmo motivo do ManageCards: sem restoreState, pro
+                        // VM do Cards ser recriado lendo o cardId novo.
+                        navController.navigate(Routes.cardsWithSelected(cardId)) {
+                            popUpTo(Routes.HOME)
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
             composable(Routes.DAILY_EXPENSES) {
@@ -235,6 +243,16 @@ fun BillFolderNavHost(
 
 /** Mapeia destinos do drawer pra rotas reais. */
 private fun NavHostController.navigateFromDrawer(destination: DrawerDestination) {
+    // Home é a raiz do stack: voltar pra ela é pop, não navigate. Um
+    // navigate(HOME) com popUpTo(HOME){saveState} + restoreState mapeia o
+    // stack recém-salvo na própria Home e o restaura na hora — o user fica
+    // preso na tela de onde saiu (acontece quando ela foi aberta por fora do
+    // drawer, ex: tap numa fatura da Home).
+    if (destination == DrawerDestination.Home &&
+        popBackStack(Routes.HOME, inclusive = false, saveState = true)
+    ) {
+        return
+    }
     val route = when (destination) {
         DrawerDestination.Home           -> Routes.HOME
         DrawerDestination.DailyExpenses  -> Routes.DAILY_EXPENSES

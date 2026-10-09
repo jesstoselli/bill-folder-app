@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
+import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.repository.AuthRepository
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.DailyExpensesRepository
+import com.billfolder.android.data.repository.ExpensesRepository
 import com.billfolder.android.data.repository.HomeRepository
 import com.billfolder.android.data.repository.SavingsRepository
 import com.billfolder.android.data.sync.DataChangeNotifier
@@ -15,6 +17,7 @@ import com.billfolder.android.ui.util.CycleDirection
 import com.billfolder.android.ui.util.observeDataChanges
 import com.billfolder.android.ui.util.resolveAdjacentCycle
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -68,6 +71,13 @@ sealed interface HomeUiState {
          * derrubar a Home.
          */
         val recentDailyExpenses: List<DailyExpenseResponse> = emptyList(),
+        /**
+         * Despesa tocada numa row da Home, já carregada por inteiro. O DTO
+         * enxuto da Home não traz o que os sheets de pagamento precisam
+         * (occurrenceAmount etc.), então o tap busca a ExpenseResponse antes
+         * de abrir o sheet. null = nenhum sheet aberto.
+         */
+        val payingExpense: ExpenseResponse? = null,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
     /** Ciclo ainda não criado pelo usuário — backend retorna 404/erro específico. */
@@ -81,11 +91,14 @@ class HomeViewModel @Inject constructor(
     private val savingsRepository: SavingsRepository,
     private val cyclesRepository: CyclesRepository,
     private val dailyExpensesRepository: DailyExpensesRepository,
+    private val expensesRepository: ExpensesRepository,
     private val dataChangeNotifier: DataChangeNotifier,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
+
+    private var openPaymentJob: Job? = null
 
     init {
         load()
@@ -137,6 +150,28 @@ class HomeViewModel @Inject constructor(
                 _state.update { (it as? HomeUiState.Content)?.copy(isRefreshing = false) ?: it }
             }
         }
+    }
+
+    /**
+     * Tap numa row de despesa da Home. Busca a despesa completa e expõe em
+     * payingExpense pra a tela abrir o sheet certo. Taps repetidos enquanto
+     * o fetch roda são ignorados; despesa já paga (ex: paga em outro device
+     * desde o último refresh) não abre nada. Falha de rede é silenciosa —
+     * mesma convenção da troca de ciclo.
+     */
+    fun openPayment(expenseId: String) {
+        if (_state.value !is HomeUiState.Content) return
+        if (openPaymentJob?.isActive == true) return
+        openPaymentJob = viewModelScope.launch {
+            val expense = runCatching { expensesRepository.get(expenseId) }.getOrNull()
+                ?: return@launch
+            if (expense.status.equals("paid", ignoreCase = true)) return@launch
+            _state.update { (it as? HomeUiState.Content)?.copy(payingExpense = expense) ?: it }
+        }
+    }
+
+    fun closePayment() {
+        _state.update { (it as? HomeUiState.Content)?.copy(payingExpense = null) ?: it }
     }
 
     fun logout(onDone: () -> Unit) {

@@ -7,10 +7,12 @@ import com.billfolder.android.data.dto.HomeIncomeBreakdownDto
 import com.billfolder.android.data.dto.HomeResponse
 import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
+import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.repository.AuthRepository
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.DailyExpensesRepository
+import com.billfolder.android.data.repository.ExpensesRepository
 import com.billfolder.android.data.repository.HomeRepository
 import com.billfolder.android.data.repository.SavingsRepository
 import com.billfolder.android.data.sync.DataChangeNotifier
@@ -20,6 +22,7 @@ import io.mockk.mockk
 import okhttp3.ResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -38,6 +41,7 @@ class HomeViewModelTest {
     private val savingsRepo = SavingsRepository(api, notifier)
     private val cyclesRepo = CyclesRepository(api, notifier)
     private val dailyExpensesRepo = DailyExpensesRepository(api, notifier)
+    private val expensesRepo = ExpensesRepository(api, notifier)
 
     // HomeViewModel só usa authRepository dentro de logout(), que estes testes
     // nunca exercitam. AuthRepository é uma classe final que exige TokenStorage
@@ -104,7 +108,66 @@ class HomeViewModelTest {
         createdAt = "2026-06-01T00:00:00Z", updatedAt = "2026-06-01T00:00:00Z",
     )
 
-    private fun viewModel() = HomeViewModel(homeRepo, authRepo, savingsRepo, cyclesRepo, dailyExpensesRepo, notifier)
+    private fun expense(id: String, status: String = "pending") = ExpenseResponse(
+        id = id, dueDate = "2026-06-10", label = "conta $id", expectedAmount = 100.0,
+        status = status, categoryId = "cat", categoryName = "Cat",
+        createdAt = "2026-06-01T00:00:00Z", updatedAt = "2026-06-01T00:00:00Z",
+    )
+
+    private fun viewModel() =
+        HomeViewModel(homeRepo, authRepo, savingsRepo, cyclesRepo, dailyExpensesRepo, expensesRepo, notifier)
+
+    // ------------------------------------------------------------------------
+    // Tap numa despesa → sheet de pagamento
+    // ------------------------------------------------------------------------
+
+    @Test
+    fun `openPayment busca a despesa completa e expoe em payingExpense`() {
+        api.onGetHome = { home("c1") }
+        api.onGetExpense = { id -> expense(id) }
+        val vm = viewModel()
+
+        vm.openPayment("e1")
+
+        assertEquals("e1", (vm.state.value as HomeUiState.Content).payingExpense?.id)
+        assertEquals(listOf("e1"), api.getExpenseCalls)
+    }
+
+    @Test
+    fun `openPayment de despesa ja paga nao abre sheet`() {
+        api.onGetHome = { home("c1") }
+        api.onGetExpense = { id -> expense(id, status = "paid") }
+        val vm = viewModel()
+
+        vm.openPayment("e1")
+
+        assertNull((vm.state.value as HomeUiState.Content).payingExpense)
+    }
+
+    @Test
+    fun `openPayment com falha de rede nao derruba a Home`() {
+        api.onGetHome = { home("c1") }
+        api.onGetExpense = { throw IOException("offline") }
+        val vm = viewModel()
+
+        vm.openPayment("e1")
+
+        val state = vm.state.value
+        assertTrue(state is HomeUiState.Content)
+        assertNull((state as HomeUiState.Content).payingExpense)
+    }
+
+    @Test
+    fun `closePayment limpa payingExpense`() {
+        api.onGetHome = { home("c1") }
+        api.onGetExpense = { id -> expense(id) }
+        val vm = viewModel()
+        vm.openPayment("e1")
+
+        vm.closePayment()
+
+        assertNull((vm.state.value as HomeUiState.Content).payingExpense)
+    }
 
     // ------------------------------------------------------------------------
     // Initial load
