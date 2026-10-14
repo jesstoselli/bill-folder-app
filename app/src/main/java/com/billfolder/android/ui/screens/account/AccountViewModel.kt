@@ -3,15 +3,18 @@ package com.billfolder.android.ui.screens.account
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.billfolder.android.data.dto.UserDto
+import com.billfolder.android.data.preferences.ReminderPreferences
 import com.billfolder.android.data.preferences.ThemeMode
 import com.billfolder.android.data.preferences.ThemePreferences
 import com.billfolder.android.data.repository.AuthRepository
 import com.billfolder.android.data.repository.UsersRepository
+import com.billfolder.android.notifications.DueBillsScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -26,14 +29,16 @@ sealed interface AccountUserState {
 }
 
 /**
- * Tela "sua conta": quem está logado, a aparência deste aparelho e o sair.
- * A aparência é salva na hora em que muda — não tem botão de salvar.
+ * Tela "sua conta": quem está logado, a aparência e os lembretes deste
+ * aparelho, e o sair. As escolhas são salvas na hora — não tem botão de salvar.
  */
 @HiltViewModel
 class AccountViewModel @Inject constructor(
     private val usersRepository: UsersRepository,
     private val authRepository: AuthRepository,
     private val themePreferences: ThemePreferences,
+    private val reminderPreferences: ReminderPreferences,
+    private val dueBillsScheduler: DueBillsScheduler,
 ) : ViewModel() {
 
     private val _user = MutableStateFlow<AccountUserState>(AccountUserState.Loading)
@@ -41,6 +46,9 @@ class AccountViewModel @Inject constructor(
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeMode
         .stateIn(viewModelScope, SharingStarted.Eagerly, ThemeMode.SYSTEM)
+
+    val dueRemindersEnabled: StateFlow<Boolean> = reminderPreferences.dueRemindersEnabled
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     init {
         loadUser()
@@ -63,6 +71,18 @@ class AccountViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { themePreferences.setThemeMode(mode) }
+    }
+
+    /** A permissão de notificação (Android 13+) é pedida pela tela antes de ligar. */
+    fun setDueRemindersEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            reminderPreferences.setDueRemindersEnabled(enabled)
+            if (enabled) {
+                dueBillsScheduler.schedule(reminderPreferences.lastCheckedDate.first())
+            } else {
+                dueBillsScheduler.cancel()
+            }
+        }
     }
 
     fun logout(onDone: () -> Unit) {

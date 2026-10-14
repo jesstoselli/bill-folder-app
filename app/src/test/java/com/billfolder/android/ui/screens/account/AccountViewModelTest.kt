@@ -5,6 +5,8 @@ import com.billfolder.android.data.preferences.ThemeMode
 import com.billfolder.android.data.repository.AuthRepository
 import com.billfolder.android.data.repository.UsersRepository
 import com.billfolder.android.testutil.FakeBillFolderApi
+import com.billfolder.android.testutil.FakeDueBillsScheduler
+import com.billfolder.android.testutil.FakeReminderPreferences
 import com.billfolder.android.testutil.FakeThemePreferences
 import com.billfolder.android.testutil.MainDispatcherRule
 import io.mockk.coVerify
@@ -22,6 +24,8 @@ class AccountViewModelTest {
 
     private val api = FakeBillFolderApi()
     private val themePreferences = FakeThemePreferences()
+    private val reminderPreferences = FakeReminderPreferences()
+    private val scheduler = FakeDueBillsScheduler()
 
     // AuthRepository exige TokenStorage (android Context); o mock basta para
     // verificar que o "sair" delega para ele.
@@ -29,7 +33,13 @@ class AccountViewModelTest {
 
     private val jess = UserDto(id = "user-1", email = "jess@example.com", displayName = "Jess")
 
-    private fun viewModel() = AccountViewModel(UsersRepository(api), authRepository, themePreferences)
+    private fun viewModel() = AccountViewModel(
+        UsersRepository(api),
+        authRepository,
+        themePreferences,
+        reminderPreferences,
+        scheduler,
+    )
 
     @Test
     fun `carrega o usuario logado`() {
@@ -81,5 +91,24 @@ class AccountViewModelTest {
     fun `inicial do avatar usa o nome e cai para o e-mail`() {
         assertEquals("J", jess.initial())
         assertEquals("X", jess.copy(displayName = "  ", email = "xavier@example.com").initial())
+    }
+
+    @Test
+    fun `ligar o lembrete agenda e desligar cancela`() {
+        api.onGetMe = { jess }
+        val checked = java.time.LocalDate.of(2026, 10, 4)
+        reminderPreferences.lastCheckedDate.value = checked
+        val vm = viewModel()
+        assertEquals(false, vm.dueRemindersEnabled.value)
+
+        vm.setDueRemindersEnabled(true)
+
+        assertEquals(true, vm.dueRemindersEnabled.value)
+        assertEquals(listOf<java.time.LocalDate?>(checked), scheduler.scheduled)
+
+        vm.setDueRemindersEnabled(false)
+
+        assertEquals(false, vm.dueRemindersEnabled.value)
+        assertEquals(1, scheduler.cancelled)
     }
 }

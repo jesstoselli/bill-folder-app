@@ -57,8 +57,12 @@
     <string name="account_theme_light">claro</string>
     <string name="account_theme_dark">escuro</string>
     <string name="account_notifications_title">notificações</string>
-    <string name="account_notifications_soon_title">avisos de vencimento</string>
-    <string name="account_notifications_soon_body">em breve. quando os avisos estiverem prontos, você vai poder ativá-los aqui.</string>
+    <string name="account_due_reminders_title">lembretes de vencimento</string>
+    <string name="account_due_reminders_body">um aviso por dia, às 9h, com o que vence hoje e ainda não foi pago.</string>
+    <string name="account_due_reminders_blocked">as notificações do BillFolder estão desligadas neste aparelho.</string>
+    <string name="account_due_reminders_open_settings">abrir configurações</string>
+    <string name="notification_channel_due_bills">Lembretes de vencimento</string>
+    <string name="notification_channel_due_bills_description">Um aviso por dia com as contas que vencem hoje.</string>
     <string name="account_logout">sair da conta</string>
 
     <string name="logout_dialog_title">sair da conta?</string>

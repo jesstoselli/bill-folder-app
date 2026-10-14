@@ -7,4 +7,6 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Verde da marca, no ícone das notificações -->
+    <color name="notification_accent">#FF86BC65</color>
 </resources>

@@ -1,5 +1,12 @@
 package com.billfolder.android.ui.screens.account
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +39,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -44,16 +52,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.UserDto
 import com.billfolder.android.data.preferences.ThemeMode
+import com.billfolder.android.notifications.notificationsAllowed
 
 /**
  * "sua conta": aberta pelo avatar da Home. Mostra quem está logado, a
- * aparência deste aparelho, as notificações (em breve) e um "sair" explícito.
+ * aparência e os lembretes de vencimento deste aparelho, e um "sair" explícito.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +75,31 @@ fun AccountScreen(
 ) {
     val user by viewModel.user.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val dueRemindersEnabled by viewModel.dueRemindersEnabled.collectAsState()
     var showLogoutConfirm by remember { mutableStateOf(false) }
+
+    // A permissão pode mudar nas configurações do aparelho; relê ao voltar pra tela.
+    val context = LocalContext.current
+    var systemAllowed by remember { mutableStateOf(notificationsAllowed(context)) }
+    var permissionDenied by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        systemAllowed = notificationsAllowed(context)
+        onPauseOrDispose { }
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        systemAllowed = notificationsAllowed(context)
+        permissionDenied = !granted
+        if (granted) viewModel.setDueRemindersEnabled(true)
+    }
+    val onDueRemindersChange: (Boolean) -> Unit = { enabled ->
+        if (enabled && !systemAllowed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            viewModel.setDueRemindersEnabled(enabled)
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -112,7 +147,12 @@ fun AccountScreen(
             }
 
             Section(title = stringResource(R.string.account_notifications_title)) {
-                NotificationsComingSoon()
+                DueRemindersCard(
+                    enabled = dueRemindersEnabled,
+                    onEnabledChange = onDueRemindersChange,
+                    blocked = (dueRemindersEnabled || permissionDenied) && !systemAllowed,
+                    onOpenSettings = { openNotificationSettings(context) },
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -248,35 +288,64 @@ private fun ThemeSelector(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
 }
 
 @Composable
-private fun NotificationsComingSoon() {
+private fun DueRemindersCard(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    blocked: Boolean,
+    onOpenSettings: () -> Unit,
+) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Notifications,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.account_notifications_soon_title),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.account_due_reminders_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.account_due_reminders_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = enabled, onCheckedChange = onEnabledChange)
+            }
+            if (blocked) {
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = stringResource(R.string.account_notifications_soon_body),
+                    text = stringResource(R.string.account_due_reminders_blocked),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.error,
                 )
+                TextButton(onClick = onOpenSettings) {
+                    Text(stringResource(R.string.account_due_reminders_open_settings))
+                }
             }
         }
     }
+}
+
+private fun openNotificationSettings(context: Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+    )
 }
 
 /** Primeira letra do nome (ou do e-mail) para o avatar. */

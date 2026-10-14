@@ -328,7 +328,7 @@ class FakeBillFolderApi : BillFolderApi {
     // ========================================================================
     // Card statements
     // ========================================================================
-    override suspend fun getCardStatements(cardId: String?): List<CardStatementResponse> {
+    override suspend fun getCardStatements(cardId: String?, from: String?, to: String?): List<CardStatementResponse> {
         getCardStatementsCalls += cardId
         return cardStatements
     }

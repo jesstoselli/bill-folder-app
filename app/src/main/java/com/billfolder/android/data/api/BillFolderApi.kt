@@ -444,9 +444,12 @@ interface BillFolderApi {
     // Card statements (faturas)
     // ------------------------------------------------------------------------
 
+    /** from/to filtram pelo vencimento (dueDate), inclusive. */
     @GET("card-statements")
     suspend fun getCardStatements(
         @Query("cardId") cardId: String? = null,
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
     ): List<CardStatementResponse>
 
     @POST("card-statements/{id}/pay")
