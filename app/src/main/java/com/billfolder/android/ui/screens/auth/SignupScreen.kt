@@ -32,13 +32,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.R
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTextField
+import com.billfolder.android.ui.theme.billFolderLogo
 
 @Composable
 fun SignupScreen(
@@ -108,7 +108,7 @@ private fun SignupContent(
             verticalArrangement = Arrangement.Center,
         ) {
             Image(
-                painter = painterResource(id = R.drawable.logo_billfolder),
+                painter = billFolderLogo(),
                 contentDescription = stringResource(R.string.app_logo_content_description),
                 modifier = Modifier.width(220.dp),
             )

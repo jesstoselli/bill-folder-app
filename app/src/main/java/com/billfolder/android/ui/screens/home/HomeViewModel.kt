@@ -6,7 +6,6 @@ import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.HomeResponse
-import com.billfolder.android.data.repository.AuthRepository
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.DailyExpensesRepository
 import com.billfolder.android.data.repository.ExpensesRepository
@@ -87,7 +86,6 @@ sealed interface HomeUiState {
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
-    private val authRepository: AuthRepository,
     private val savingsRepository: SavingsRepository,
     private val cyclesRepository: CyclesRepository,
     private val dailyExpensesRepository: DailyExpensesRepository,
@@ -172,13 +170,6 @@ class HomeViewModel @Inject constructor(
 
     fun closePayment() {
         _state.update { (it as? HomeUiState.Content)?.copy(payingExpense = null) ?: it }
-    }
-
-    fun logout(onDone: () -> Unit) {
-        viewModelScope.launch {
-            authRepository.logout()
-            onDone()
-        }
     }
 
     /**

@@ -9,7 +9,6 @@ import com.billfolder.android.data.dto.CycleResponse
 import com.billfolder.android.data.dto.DailyExpenseResponse
 import com.billfolder.android.data.dto.ExpenseResponse
 import com.billfolder.android.data.dto.SavingsAccountResponse
-import com.billfolder.android.data.repository.AuthRepository
 import com.billfolder.android.data.repository.CyclesRepository
 import com.billfolder.android.data.repository.DailyExpensesRepository
 import com.billfolder.android.data.repository.ExpensesRepository
@@ -18,7 +17,6 @@ import com.billfolder.android.data.repository.SavingsRepository
 import com.billfolder.android.data.sync.DataChangeNotifier
 import com.billfolder.android.testutil.FakeBillFolderApi
 import com.billfolder.android.testutil.MainDispatcherRule
-import io.mockk.mockk
 import okhttp3.ResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,11 +41,6 @@ class HomeViewModelTest {
     private val dailyExpensesRepo = DailyExpensesRepository(api, notifier)
     private val expensesRepo = ExpensesRepository(api, notifier)
 
-    // HomeViewModel só usa authRepository dentro de logout(), que estes testes
-    // nunca exercitam. AuthRepository é uma classe final que exige TokenStorage
-    // (e portanto um android Context), inviável num unit test JVM puro — então
-    // usamos um mock relaxed só pra satisfazer o parâmetro do construtor.
-    private val authRepo: AuthRepository = mockk(relaxed = true)
 
     // ------------------------------------------------------------------------
     // Factory helpers (mínimos válidos, determinísticos — sem LocalDate.now())
@@ -115,7 +108,7 @@ class HomeViewModelTest {
     )
 
     private fun viewModel() =
-        HomeViewModel(homeRepo, authRepo, savingsRepo, cyclesRepo, dailyExpensesRepo, expensesRepo, notifier)
+        HomeViewModel(homeRepo, savingsRepo, cyclesRepo, dailyExpensesRepo, expensesRepo, notifier)
 
     // ------------------------------------------------------------------------
     // Tap numa despesa → sheet de pagamento

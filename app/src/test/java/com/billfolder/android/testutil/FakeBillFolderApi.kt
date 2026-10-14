@@ -52,6 +52,7 @@ import com.billfolder.android.data.dto.UpdateIncomeEntryRequest
 import com.billfolder.android.data.dto.UpdateIncomeSourceRequest
 import com.billfolder.android.data.dto.UpdateSavingsAccountRequest
 import com.billfolder.android.data.dto.UpdateSavingsTransactionRequest
+import com.billfolder.android.data.dto.UserDto
 import retrofit2.Response
 
 /**
@@ -69,6 +70,7 @@ class FakeBillFolderApi : BillFolderApi {
 
     // ---- Reads configuráveis (GET) ----
     var onGetHome: (String?) -> HomeResponse = { notConfigured("getHome") }
+    var onGetMe: () -> UserDto = { notConfigured("getMe") }
     var categories: List<CategoryDto> = emptyList()
     var checkingAccounts: List<CheckingAccountResponse> = emptyList()
     var onGetCurrentCycle: () -> CycleResponse = { notConfigured("getCurrentCycle") }
@@ -163,6 +165,7 @@ class FakeBillFolderApi : BillFolderApi {
     // Home
     // ========================================================================
     override suspend fun getHome(cycleId: String?): HomeResponse = onGetHome(cycleId)
+    override suspend fun getMe(): UserDto = onGetMe()
 
     // ========================================================================
     // Reference data / Checking accounts

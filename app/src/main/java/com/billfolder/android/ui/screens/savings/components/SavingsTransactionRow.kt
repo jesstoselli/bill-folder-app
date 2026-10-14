@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.billfolder.android.R
 import com.billfolder.android.data.dto.SavingsTransactionResponse
 import com.billfolder.android.data.dto.SavingsTransactionTypes
-import com.billfolder.android.ui.theme.BfBrandBill
+import com.billfolder.android.ui.theme.BfPositiveAmount
 import com.billfolder.android.ui.theme.MoneyRow
 import com.billfolder.android.ui.util.formatBrl
 import com.billfolder.android.ui.util.formatShortDate
@@ -62,7 +62,7 @@ fun SavingsTransactionRow(
 
     val isInflow = SavingsTransactionTypes.isInflow(transaction.type)
     val amountText = formatSignedBrl(transaction.amount, isInflow)
-    val amountColor = if (isInflow) BfBrandBill else MaterialTheme.colorScheme.error
+    val amountColor = if (isInflow) BfPositiveAmount else MaterialTheme.colorScheme.error
 
     Card(
         modifier = modifier.fillMaxWidth(),

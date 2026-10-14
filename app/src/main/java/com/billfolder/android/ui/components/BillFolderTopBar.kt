@@ -22,10 +22,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.billfolder.android.R
+import com.billfolder.android.ui.theme.billFolderLogo
 
 /**
  * Top bar do app: ☰ menu (drawer) + wordmark BillFolder + avatar do usuário.
@@ -72,7 +72,7 @@ fun BillFolderTopBar(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.logo_billfolder),
+                painter = billFolderLogo(),
                 contentDescription = stringResource(R.string.app_logo_content_description),
                 tint = androidx.compose.ui.graphics.Color.Unspecified,
                 modifier = Modifier.width(120.dp),

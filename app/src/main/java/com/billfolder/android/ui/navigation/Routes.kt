@@ -8,6 +8,7 @@ object Routes {
     const val LOGIN           = "login"
     const val SIGNUP          = "signup"
     const val HOME            = "home"
+    const val ACCOUNT         = "account"
 
     /**
      * Reset de senha — 2 telas em cadeia:

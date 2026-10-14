@@ -17,7 +17,6 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.billfolder.android.R
 import androidx.compose.runtime.Composable
@@ -40,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.billfolder.android.ui.components.BillFolderPrimaryButton
 import com.billfolder.android.ui.components.BillFolderTextField
+import com.billfolder.android.ui.theme.billFolderLogo
 
 /**
  * Tela de login. Container do AuthViewModel + UI stateless via state hoisting.
@@ -108,7 +108,7 @@ private fun LoginContent(
             verticalArrangement = Arrangement.Center,
         ) {
             Image(
-                painter = painterResource(id = R.drawable.logo_billfolder),
+                painter = billFolderLogo(),
                 contentDescription = stringResource(R.string.app_logo_content_description),
                 modifier = Modifier.width(220.dp),
             )

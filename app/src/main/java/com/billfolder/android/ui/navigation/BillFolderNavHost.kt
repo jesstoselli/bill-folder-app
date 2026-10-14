@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.billfolder.android.ui.components.BillFolderDrawer
 import com.billfolder.android.ui.components.DrawerDestination
+import com.billfolder.android.ui.screens.account.AccountScreen
 import com.billfolder.android.ui.screens.auth.ForgotPasswordScreen
 import com.billfolder.android.ui.screens.auth.LoginScreen
 import com.billfolder.android.ui.screens.auth.ResetPasswordScreen
@@ -134,12 +135,8 @@ fun BillFolderNavHost(
             }
             composable(Routes.HOME) {
                 HomeScreen(
-                    onLogout = {
-                        navController.navigate(Routes.LOGIN) {
-                            // Sai da Home com back stack limpo — usuário não consegue
-                            // voltar pra Home com o botão back depois de deslogar.
-                            popUpTo(0) { inclusive = true }
-                        }
+                    onOpenAccount = {
+                        navController.navigate(Routes.ACCOUNT) { launchSingleTop = true }
                     },
                     onMenuClick = openDrawer,
                     onOpenCard = { cardId ->
@@ -148,6 +145,17 @@ fun BillFolderNavHost(
                         navController.navigate(Routes.cardsWithSelected(cardId)) {
                             popUpTo(Routes.HOME)
                             launchSingleTop = true
+                        }
+                    },
+                )
+            }
+            composable(Routes.ACCOUNT) {
+                AccountScreen(
+                    onBack = { navController.popBackStack() },
+                    onLogout = {
+                        navController.navigate(Routes.LOGIN) {
+                            // Back stack limpo — o back não volta pro app depois de deslogar.
+                            popUpTo(0) { inclusive = true }
                         }
                     },
                 )

@@ -29,12 +29,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.billfolder.android.R
 import com.billfolder.android.ui.theme.BfBrandBill
 import com.billfolder.android.ui.theme.DarkOnPrimary
+import com.billfolder.android.ui.theme.billFolderLogo
 
 /**
  * Destinos navegáveis a partir do drawer. Estável entre runs (não trocar
@@ -79,7 +79,7 @@ fun BillFolderDrawer(
         ) {
             // ----- Header com logo wordmark -----
             Icon(
-                painter = painterResource(id = R.drawable.logo_billfolder),
+                painter = billFolderLogo(),
                 contentDescription = stringResource(R.string.app_logo_content_description),
                 tint = Color.Unspecified, // logo já tem cores próprias
                 modifier = Modifier

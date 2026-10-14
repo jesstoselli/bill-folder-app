@@ -43,6 +43,7 @@ import com.billfolder.android.data.dto.SignupRequest
 import com.billfolder.android.data.dto.UpdateCardEntryRequest
 import com.billfolder.android.data.dto.UpdateCardSubscriptionAmountRequest
 import com.billfolder.android.data.dto.UpdateCheckingAccountRequest
+import com.billfolder.android.data.dto.UserDto
 import com.billfolder.android.data.dto.UpdateCreditCardAccountRequest
 import com.billfolder.android.data.dto.UpdateCycleAdjustmentRequest
 import com.billfolder.android.data.dto.UpdateDailyExpenseRequest
@@ -117,6 +118,14 @@ interface BillFolderApi {
      */
     @GET("home")
     suspend fun getHome(@Query("cycleId") cycleId: String? = null): HomeResponse
+
+    // ------------------------------------------------------------------------
+    // Usuário
+    // ------------------------------------------------------------------------
+
+    /** Dados do usuário logado (tela "sua conta"). */
+    @GET("users/me")
+    suspend fun getMe(): UserDto
 
     // ------------------------------------------------------------------------
     // Reference data — populam dropdowns de formulários
