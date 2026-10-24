@@ -186,23 +186,39 @@ fun ExpensesScreen(
 
         // Sheet de editar (modo edit) — visível enquanto editing != null no VM.
         // Branch por tipo de despesa:
-        //  - provisionada (fisio/terapia semanal): edita o VALOR POR SESSÃO via
-        //    RepriceProvisionedExpenseSheet — mexer no total (expectedAmount) é
-        //    bloqueado backend-side; quem recalcula o total é o backend.
+        //  - provisionada (fisio/terapia semanal): pergunta o que ajustar — o
+        //    VALOR POR SESSÃO (RepriceProvisionedExpenseSheet) ou as SESSÕES
+        //    deste ciclo (AdjustOccurrencesSheet). O total (expectedAmount) não
+        //    se edita direto; quem recalcula é o backend.
         //  - normal: reusa o AddExpenseSheet com `existing` preenchido (PATCH sem
         //    mexer em status/paid* — esse é caminho do PayExpenseSheet acima).
         val current = state
         if (current is ExpensesUiState.Content && current.editing != null) {
             val editing = current.editing
             if (editing.isProvisioned()) {
-                RepriceProvisionedExpenseSheet(
-                    expense = editing,
-                    onDismiss = viewModel::cancelEdit,
-                    onSaved = {
-                        viewModel.cancelEdit()
-                        viewModel.refresh()
-                    },
-                )
+                // Primeiro pergunta o que ajustar; a escolha vale só pra esta edição.
+                var choice by remember(editing.id) { mutableStateOf<ProvisionedEditChoice?>(null) }
+                val onSaved = {
+                    viewModel.cancelEdit()
+                    viewModel.refresh()
+                }
+                when (choice) {
+                    null -> ProvisionedEditChoiceDialog(
+                        expenseLabel = editing.label,
+                        onChoice = { choice = it },
+                        onDismiss = viewModel::cancelEdit,
+                    )
+                    ProvisionedEditChoice.Amount -> RepriceProvisionedExpenseSheet(
+                        expense = editing,
+                        onDismiss = viewModel::cancelEdit,
+                        onSaved = onSaved,
+                    )
+                    ProvisionedEditChoice.Sessions -> AdjustOccurrencesSheet(
+                        expense = editing,
+                        onDismiss = viewModel::cancelEdit,
+                        onSaved = onSaved,
+                    )
+                }
             } else {
                 AddExpenseSheet(
                     existing = editing,

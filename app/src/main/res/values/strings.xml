@@ -398,6 +398,22 @@
     <!-- %1$s = label -->
     <string name="reprice_provisioned_summary_format">novo valor por sessão de \"%1$s\" — o total do mês recalcula sozinho</string>
 
+    <!-- Ajustar sessões de uma despesa provisionada neste ciclo -->
+    <string name="provisioned_edit_choice_title">o que você quer ajustar?</string>
+    <string name="provisioned_edit_choice_message">"%1$s" é uma despesa semanal.</string>
+    <string name="provisioned_edit_choice_amount">valor por sessão</string>
+    <string name="provisioned_edit_choice_sessions">sessões neste ciclo</string>
+    <string name="adjust_occurrences_title">sessões neste ciclo</string>
+    <string name="adjust_occurrences_summary_format">quantas sessões de "%1$s" acontecem neste ciclo? só este ciclo muda; os próximos seguem a recorrência.</string>
+    <string name="adjust_occurrences_count_format">%1$d sessões</string>
+    <string name="adjust_occurrences_count_one">1 sessão</string>
+    <string name="adjust_occurrences_decrement">uma sessão a menos</string>
+    <string name="adjust_occurrences_increment">uma sessão a mais</string>
+    <string name="adjust_occurrences_total_format">%1$s × %2$s = %3$s</string>
+    <string name="adjust_occurrences_before_format">antes: %1$s</string>
+    <string name="adjust_occurrences_paid_hint_format">%1$d já pagas — não dá pra ficar abaixo disso.</string>
+    <string name="adjust_occurrences_cta">salvar sessões</string>
+
     <!-- Provisioned expense (baixa semanal) -->
     <!-- Progresso na row: %1$s = label, %2$d = pagas, %3$d = total -->
     <string name="expense_provisioned_progress_format">%1$s (%2$d/%3$d)</string>

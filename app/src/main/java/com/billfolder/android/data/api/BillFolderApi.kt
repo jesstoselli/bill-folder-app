@@ -36,6 +36,7 @@ import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
 import com.billfolder.android.data.dto.RepriceProvisionedExpenseRequest
+import com.billfolder.android.data.dto.UpdateOccurrencesRequest
 import com.billfolder.android.data.dto.ResetPasswordRequest
 import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SavingsTransactionResponse
@@ -289,6 +290,13 @@ interface BillFolderApi {
     suspend fun repriceProvisionedExpense(
         @Path("id") id: String,
         @Body request: RepriceProvisionedExpenseRequest,
+    ): ExpenseResponse
+
+    /** Muda quantas sessões a despesa provisionada tem neste ciclo. */
+    @POST("expenses/{id}/update-occurrences")
+    suspend fun updateOccurrences(
+        @Path("id") id: String,
+        @Body request: UpdateOccurrencesRequest,
     ): ExpenseResponse
 
     /**

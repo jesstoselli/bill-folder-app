@@ -101,6 +101,17 @@ data class RepriceProvisionedExpenseRequest(
 )
 
 /**
+ * POST /v1/expenses/{id}/update-occurrences — quantas sessões a despesa
+ * provisionada tem NESTE ciclo (férias, sessão extra). O total recalcula no
+ * backend; a recorrência e os outros ciclos não mudam. Não pode ficar abaixo
+ * das sessões já pagas (backend: 400 "below_paid").
+ */
+@Serializable
+data class UpdateOccurrencesRequest(
+    @SerialName("occurrencesTotal") val occurrencesTotal: Int,
+)
+
+/**
  * DTOs de "recorrência de despesa" (template que gera despesas
  * automaticamente a cada ciclo). Alinhado com
  * BillFolder.Application.Dtos.ExpenseRecurrences (.NET).

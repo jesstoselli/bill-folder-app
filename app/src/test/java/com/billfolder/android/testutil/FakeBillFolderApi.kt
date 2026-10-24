@@ -37,6 +37,7 @@ import com.billfolder.android.data.dto.LoginRequest
 import com.billfolder.android.data.dto.LogoutRequest
 import com.billfolder.android.data.dto.RefreshTokenRequest
 import com.billfolder.android.data.dto.RepriceProvisionedExpenseRequest
+import com.billfolder.android.data.dto.UpdateOccurrencesRequest
 import com.billfolder.android.data.dto.ResetPasswordRequest
 import com.billfolder.android.data.dto.SavingsAccountResponse
 import com.billfolder.android.data.dto.SavingsTransactionResponse
@@ -100,6 +101,7 @@ class FakeBillFolderApi : BillFolderApi {
     var onUpdateExpense: (String, UpdateExpenseRequest) -> ExpenseResponse = { _, _ -> notConfigured("updateExpense") }
     var onPayOccurrence: (String, PayOccurrenceRequest) -> ExpenseResponse = { _, _ -> notConfigured("payOccurrence") }
     var onRepriceProvisionedExpense: (String, RepriceProvisionedExpenseRequest) -> ExpenseResponse = { _, _ -> notConfigured("repriceProvisionedExpense") }
+    var onUpdateOccurrences: (String, UpdateOccurrencesRequest) -> ExpenseResponse = { _, _ -> notConfigured("updateOccurrences") }
     var onCreateExpenseRecurrence: (CreateExpenseRecurrenceRequest) -> ExpenseRecurrenceResponse = { notConfigured("createExpenseRecurrence") }
     var onCreateIncomeSource: (CreateIncomeSourceRequest) -> IncomeSourceResponse = { notConfigured("createIncomeSource") }
     var onUpdateIncomeSource: (String, UpdateIncomeSourceRequest) -> IncomeSourceResponse = { _, _ -> notConfigured("updateIncomeSource") }
@@ -137,6 +139,7 @@ class FakeBillFolderApi : BillFolderApi {
     val getExpenseCalls = mutableListOf<String>()
     val payOccurrenceCalls = mutableListOf<Pair<String, PayOccurrenceRequest>>()
     val repriceProvisionedExpenseCalls = mutableListOf<Pair<String, RepriceProvisionedExpenseRequest>>()
+    val updateOccurrencesCalls = mutableListOf<Pair<String, UpdateOccurrencesRequest>>()
     val createExpenseRecurrenceCalls = mutableListOf<CreateExpenseRecurrenceRequest>()
     val createCardEntryRecurrenceCalls = mutableListOf<CreateCardEntryRecurrenceRequest>()
     val updateCardSubscriptionAmountCalls = mutableListOf<Pair<String, UpdateCardSubscriptionAmountRequest>>()
@@ -247,6 +250,10 @@ class FakeBillFolderApi : BillFolderApi {
     override suspend fun repriceProvisionedExpense(id: String, request: RepriceProvisionedExpenseRequest): ExpenseResponse {
         repriceProvisionedExpenseCalls += id to request
         return onRepriceProvisionedExpense(id, request)
+    }
+    override suspend fun updateOccurrences(id: String, request: UpdateOccurrencesRequest): ExpenseResponse {
+        updateOccurrencesCalls += id to request
+        return onUpdateOccurrences(id, request)
     }
     override suspend fun deleteExpense(id: String, scope: String?): Response<Unit> {
         deletedExpenseIds += id
