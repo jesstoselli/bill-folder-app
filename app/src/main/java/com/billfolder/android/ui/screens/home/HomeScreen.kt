@@ -485,8 +485,9 @@ private fun collectNextDue(data: HomeResponse, cardStatementSubtitle: String): L
     val expenses = data.upcomingExpenses
         .filter { !it.status.equals("overdue", ignoreCase = true) }
         .map { it.toRow() }
+    // Fatura zerada (ou com crédito) por estorno não tem o que pagar.
     val statements = data.cardStatementsInCycle
-        .filter { !it.status.equals("paid", ignoreCase = true) }
+        .filter { !it.status.equals("paid", ignoreCase = true) && it.totalAmount > 0.0 }
         .map { it.toRow(cardStatementSubtitle) }
     return (expenses + statements).sortedBy { it.dueDate }
 }

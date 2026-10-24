@@ -270,4 +270,49 @@ class AddCardEntryViewModelTest {
         assertTrue(api.createCardEntryRecurrenceCalls.isEmpty())
         assertTrue(api.createCardEntryCalls.isEmpty())
     }
+
+    // ---- Estorno ----------------------------------------------------------------
+
+    @Test
+    fun `estorno manda o valor negativo, sempre a vista`() {
+        api.creditCards = listOf(card("c1"))
+        api.categories = listOf(category("cat1", 1))
+        api.onCreateCardEntry = { cardEntry("refund-1") }
+        val vm = viewModel()
+        vm.onInstallmentsChange("3")
+        vm.onRefundChange(true)
+        vm.onLabelChange("Estorno tênis")
+        vm.onTotalAmountChange("89,90")
+        vm.onCategoryChange("cat1")
+
+        vm.submitAll()
+
+        val req = api.createCardEntryCalls.single()
+        assertEquals(-89.9, req.totalAmount, 0.0001)
+        assertEquals(1, req.installmentsCount)
+        assertTrue(vm.state.value.savedSuccessfully)
+    }
+
+    @Test
+    fun `estorno desliga a assinatura mensal e volta pra 1 parcela`() {
+        val vm = viewModel()
+        vm.onRepeatMonthlyChange(true)
+        vm.onInstallmentsChange("4")
+
+        vm.onRefundChange(true)
+
+        assertTrue(vm.state.value.isRefund)
+        assertFalse(vm.state.value.repeatMonthly)
+        assertEquals("1", vm.state.value.installmentsCount)
+    }
+
+    @Test
+    fun `editar um estorno mostra o valor positivo e marca o modo estorno`() {
+        val vm = viewModel()
+
+        vm.prefill(cardEntry("refund-1").copy(totalAmount = -89.9, installmentsCount = 1))
+
+        assertTrue(vm.state.value.isRefund)
+        assertEquals("89,90", vm.state.value.totalAmount)
+    }
 }

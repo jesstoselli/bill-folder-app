@@ -5,9 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +45,7 @@ import com.billfolder.android.ui.util.formatBrl
  *    mudar valor/parcelas, user deleta e recria.
  *  - Hint texto explica a limitação visualmente.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCardEntrySheet(
     onDismiss: () -> Unit,
@@ -84,11 +89,14 @@ fun AddCardEntrySheet(
     }
 
     val isEditing = state.editingId != null
-    val title = if (isEditing) {
-        stringResource(R.string.add_card_entry_title_edit)
-    } else {
-        stringResource(R.string.add_card_entry_title)
-    }
+    val title = stringResource(
+        when {
+            isEditing && state.isRefund -> R.string.add_card_entry_title_edit_refund
+            isEditing -> R.string.add_card_entry_title_edit
+            state.isRefund -> R.string.add_card_entry_title_refund
+            else -> R.string.add_card_entry_title
+        },
+    )
     val ctaText = if (isEditing) {
         stringResource(R.string.sheet_update_cta)
     } else {
@@ -133,6 +141,33 @@ fun AddCardEntrySheet(
             ?.namePt
             ?: ""
 
+        // Compra ou estorno — só ao criar; editar não muda o valor.
+        if (!isEditing) {
+            val kinds = listOf(
+                false to stringResource(R.string.add_card_entry_kind_purchase),
+                true to stringResource(R.string.add_card_entry_kind_refund),
+            )
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                kinds.forEachIndexed { index, (refund, label) ->
+                    SegmentedButton(
+                        selected = state.isRefund == refund,
+                        onClick = { viewModel.onRefundChange(refund) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = kinds.size),
+                        enabled = !state.isSaving,
+                    ) {
+                        Text(label)
+                    }
+                }
+            }
+            if (state.isRefund) {
+                Text(
+                    text = stringResource(R.string.add_card_entry_refund_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
         // Aviso explicando os campos lockados em modo edit. Mostrado uma
         // vez no topo do form pra não poluir cada campo individualmente.
         if (isEditing) {
@@ -171,14 +206,21 @@ fun AddCardEntrySheet(
         BillFolderMoneyField(
             value = state.totalAmount,
             onValueChange = viewModel::onTotalAmountChange,
-            label = stringResource(R.string.add_card_entry_field_total_amount),
+            label = stringResource(
+                if (state.isRefund) {
+                    R.string.add_card_entry_field_refund_amount
+                } else {
+                    R.string.add_card_entry_field_total_amount
+                },
+            ),
             enabled = !state.isSaving && !isEditing,
             imeAction = ImeAction.Next,
         )
 
         // Toggle "assinatura mensal" — só em modo create. Quando ON, a compra
         // vira um template de recorrência (1x/mês) e o campo de parcelas some.
-        if (!isEditing) {
+        // Estorno não vira assinatura.
+        if (!isEditing && !state.isRefund) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -204,9 +246,9 @@ fun AddCardEntrySheet(
             }
         }
 
-        // Parcelas: escondido em assinatura (é sempre 1x). Também disabled em
-        // modo edit (backend não recalcula installments).
-        if (!state.repeatMonthly) {
+        // Parcelas: escondido em assinatura e estorno (sempre 1x). Também
+        // disabled em modo edit (backend não recalcula installments).
+        if (!state.repeatMonthly && !state.isRefund) {
             OutlinedTextField(
                 value = state.installmentsCount,
                 onValueChange = viewModel::onInstallmentsChange,

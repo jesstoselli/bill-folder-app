@@ -23,13 +23,15 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
 import java.time.LocalDate
+import kotlin.math.abs
 import javax.inject.Inject
 
 /**
  * Form de "nova/editar compra no cartão".
  *
  * Modos:
- *  - Create (editingId == null): POST com todos os campos.
+ *  - Create (editingId == null): POST com todos os campos. Compra ou estorno
+ *    (valor negativo, sempre à vista).
  *  - Edit (editingId != null): PATCH só com label/categoryId/notes —
  *    backend não permite mudar cartão/data/valor/parcelas (mexer em
  *    qualquer um exigiria recalcular installments e mover entre
@@ -48,6 +50,10 @@ data class AddCardEntryFormState(
     // (CreateCardEntryRecurrenceRequest) em vez de uma CardEntry avulsa.
     // Assinatura é sempre 1x — o campo de parcelas some no sheet.
     val repeatMonthly: Boolean = false,
+
+    // Estorno: crédito no cartão. O valor é digitado positivo e vai negativo
+    // pro backend; é sempre à vista e nunca vira assinatura.
+    val isRefund: Boolean = false,
 
     val cards: List<CreditCardAccountResponse> = emptyList(),
     val categories: List<CategoryDto> = emptyList(),
@@ -104,6 +110,10 @@ class AddCardEntryViewModel @Inject constructor(
     fun onCategoryChange(id: String) = _state.update { it.copy(selectedCategoryId = id) }
     fun onNotesChange(value: String) = _state.update { it.copy(notes = value) }
     fun onRepeatMonthlyChange(value: Boolean) = _state.update { it.copy(repeatMonthly = value) }
+    fun onRefundChange(value: Boolean) = _state.update {
+        if (value) it.copy(isRefund = true, repeatMonthly = false, installmentsCount = "1")
+        else it.copy(isRefund = false)
+    }
 
     /**
      * Preenche o form com uma entry existente — modo edit. Todos os campos
@@ -118,7 +128,8 @@ class AddCardEntryViewModel @Inject constructor(
                 editingId = item.id,
                 purchaseDate = item.purchaseDate,
                 label = item.label,
-                totalAmount = item.totalAmount.toBrlInputString(),
+                totalAmount = abs(item.totalAmount).toBrlInputString(),
+                isRefund = item.totalAmount < 0,
                 installmentsCount = item.installmentsCount.toString(),
                 selectedCardId = item.cardId,
                 selectedCategoryId = item.categoryId,
@@ -153,8 +164,8 @@ class AddCardEntryViewModel @Inject constructor(
                 current.label.isBlank()                    -> labelEmptyMessage
                 parsedAmount <= 0                          -> amountInvalidMessage
                 current.selectedCardId.isNullOrBlank()     -> cardEmptyMessage
-                // Assinatura é sempre 1x — não há campo de parcelas pra validar.
-                !current.repeatMonthly &&
+                // Assinatura e estorno são sempre 1x — sem parcelas pra validar.
+                !current.repeatMonthly && !current.isRefund &&
                     parsedInstallments < 1                 -> installmentsInvalidMessage
                 current.selectedCategoryId.isNullOrBlank() -> categoryEmptyMessage
                 else                                       -> null
@@ -192,12 +203,13 @@ class AddCardEntryViewModel @Inject constructor(
                     )
                     cardEntryRecurrencesRepository.create(request)
                 } else {
+                    val amount = parseAmount(current.totalAmount)!!
                     val request = CreateCardEntryRequest(
                         cardId = current.selectedCardId!!,
                         purchaseDate = current.purchaseDate,
                         label = current.label.trim(),
-                        totalAmount = parseAmount(current.totalAmount)!!,
-                        installmentsCount = current.installmentsCount.toInt(),
+                        totalAmount = if (current.isRefund) -amount else amount,
+                        installmentsCount = if (current.isRefund) 1 else current.installmentsCount.toInt(),
                         categoryId = current.selectedCategoryId!!,
                         notes = current.notes.takeIf { it.isNotBlank() }?.trim(),
                     )

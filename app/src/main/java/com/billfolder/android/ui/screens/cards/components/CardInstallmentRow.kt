@@ -1,5 +1,6 @@
 package com.billfolder.android.ui.screens.cards.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,7 +19,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.billfolder.android.R
 import com.billfolder.android.ui.screens.cards.CardInstallmentDisplay
+import com.billfolder.android.ui.theme.BfPositiveAmount
 import com.billfolder.android.ui.theme.MoneyRow
+import com.billfolder.android.ui.theme.PillShape
 import com.billfolder.android.ui.util.formatBrl
 import com.billfolder.android.ui.util.formatShortDate
 
@@ -32,12 +35,15 @@ import com.billfolder.android.ui.util.formatShortDate
  *    do total, útil pra user rastrear "essa é a 3ª parcela de 6"
  *
  * Valor exibido: valor da PARCELA (installment.amount), não da compra.
+ * Estorno (valor negativo) aparece em verde com o chip "estorno".
  */
 @Composable
 fun CardInstallmentRow(
     installment: CardInstallmentDisplay,
     modifier: Modifier = Modifier,
 ) {
+    // Estorno é crédito: parcela negativa, mostrada em verde com o chip.
+    val isRefund = installment.amount < 0
     val labelWithProgress = if (installment.installmentsCount > 1) {
         stringResource(
             R.string.cards_installment_progress_format,
@@ -64,11 +70,30 @@ fun CardInstallmentRow(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = labelWithProgress,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = labelWithProgress,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (isRefund) {
+                        Text(
+                            text = stringResource(R.string.cards_refund_chip),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BfPositiveAmount,
+                            modifier = Modifier
+                                .background(
+                                    color = BfPositiveAmount.copy(alpha = 0.14f),
+                                    shape = PillShape,
+                                )
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
+                }
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = stringResource(
@@ -83,7 +108,7 @@ fun CardInstallmentRow(
             Text(
                 text = formatBrl(installment.amount),
                 style = MoneyRow,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (isRefund) BfPositiveAmount else MaterialTheme.colorScheme.onSurface,
             )
         }
     }

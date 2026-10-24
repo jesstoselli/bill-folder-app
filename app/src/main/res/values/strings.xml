@@ -268,6 +268,15 @@
     <string name="add_card_entry_installments_preview_format">%1$dx %2$s</string>
     <!-- Aviso mostrado em modo edit pra explicar campos disabled -->
     <string name="add_card_entry_edit_locked_hint">cartão, data, valor e parcelas não podem ser editados — pra mudar, deleta e cria de novo.</string>
+    <!-- Estorno no cartão -->
+    <string name="add_card_entry_kind_purchase">compra</string>
+    <string name="add_card_entry_kind_refund">estorno</string>
+    <string name="add_card_entry_title_refund">novo estorno no cartão</string>
+    <string name="add_card_entry_title_edit_refund">editar estorno no cartão</string>
+    <string name="add_card_entry_field_refund_amount">valor estornado</string>
+    <string name="add_card_entry_refund_hint">o estorno abate da fatura em que cair. use a categoria da compra original.</string>
+    <string name="cards_refund_chip">estorno</string>
+    <string name="cards_total_credit_label">crédito nesse cartão no ciclo</string>
     <!-- Toggle "assinatura mensal": vira template de recorrência em vez de compra avulsa -->
     <string name="add_card_entry_field_repeat_monthly">repetir todo mês</string>
     <string name="add_card_entry_field_repeat_monthly_hint">cria uma assinatura que lança essa compra todo mês no dia da data escolhida.</string>

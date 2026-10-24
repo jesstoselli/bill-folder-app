@@ -281,9 +281,12 @@ private fun Content(
         }
 
         item {
+            // Estornos maiores que as compras deixam crédito na fatura.
             BillFolderTotalCard(
-                total = total,
-                label = stringResource(R.string.cards_total_label),
+                total = if (total < 0) -total else total,
+                label = stringResource(
+                    if (total < 0) R.string.cards_total_credit_label else R.string.cards_total_label,
+                ),
             )
         }
 
