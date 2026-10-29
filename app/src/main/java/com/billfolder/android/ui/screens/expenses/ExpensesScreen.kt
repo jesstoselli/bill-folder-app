@@ -130,6 +130,7 @@ fun ExpensesScreen(
                     },
                     onRequestDelete = viewModel::requestDelete,
                     onRequestEdit = viewModel::requestEdit,
+                    onRequestUndoPayment = viewModel::requestUndoPayment,
                     onPreviousCycle = viewModel::goToPreviousCycle,
                     onNextCycle = viewModel::goToNextCycle,
                     onPullRefresh = viewModel::pullRefresh,
@@ -231,6 +232,16 @@ fun ExpensesScreen(
             }
         }
 
+        if (current is ExpensesUiState.Content && current.pendingUndo != null) {
+            UndoPaymentDialog(
+                expenseLabel = current.pendingUndo.label,
+                isWorking = current.undoingId != null,
+                errorMessage = current.undoError,
+                onConfirm = viewModel::confirmUndoPayment,
+                onCancel = viewModel::cancelUndoPayment,
+            )
+        }
+
         // Dialog de confirmação de delete — atrelado ao pendingDelete do VM.
         // Branch: despesa provisionada (recorrência) pede o escopo via
         // RecurrenceScopeDialog e manda o literal snake_case; despesa normal
@@ -267,6 +278,7 @@ private fun ExpensesContent(
     onPayExpense: (ExpenseResponse) -> Unit,
     onRequestDelete: (ExpenseResponse) -> Unit,
     onRequestEdit: (ExpenseResponse) -> Unit,
+    onRequestUndoPayment: (ExpenseResponse) -> Unit,
     onPreviousCycle: () -> Unit,
     onNextCycle: () -> Unit,
     onPullRefresh: () -> Unit,
@@ -344,9 +356,9 @@ private fun ExpensesContent(
 
         if (paid.isNotEmpty()) {
             item { SectionHeader(text = stringResource(R.string.expenses_section_paid)) }
-            // Paid sem onClick (tap não tem efeito — já tá pago) mas swipe
-            // funciona normal: user pode querer deletar o registro ou
-            // corrigir um campo errado.
+            // Tap numa paga oferece desfazer o pagamento (confirmado por
+            // engano). Provisionada é quitada sessão a sessão, então não.
+            // Swipe funciona normal: deletar ou corrigir um campo.
             items(paid, key = { it.id }) { exp ->
                 SwipeToActionRow(
                     isPending = state.pendingDelete?.id == exp.id ||
@@ -354,7 +366,10 @@ private fun ExpensesContent(
                     onDelete = { onRequestDelete(exp) },
                     onEdit = { onRequestEdit(exp) },
                 ) {
-                    ExpenseRow(expense = exp, onClick = null)
+                    ExpenseRow(
+                        expense = exp,
+                        onClick = if (exp.isProvisioned()) null else ({ onRequestUndoPayment(exp) }),
+                    )
                 }
             }
         }
@@ -396,6 +411,44 @@ private fun DeleteExpenseDialog(
         },
         dismissButton = {
             TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
+}
+
+/** Desfazer um pagamento confirmado por engano: a despesa volta a ficar pendente. */
+@Composable
+private fun UndoPaymentDialog(
+    expenseLabel: String,
+    isWorking: Boolean,
+    errorMessage: String?,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isWorking) onCancel() },
+        title = { Text(text = stringResource(R.string.expense_undo_payment_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = stringResource(R.string.expense_undo_payment_message, expenseLabel))
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !isWorking) {
+                Text(stringResource(R.string.expense_undo_payment_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel, enabled = !isWorking) {
                 Text(stringResource(R.string.common_cancel))
             }
         },

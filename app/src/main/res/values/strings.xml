@@ -374,6 +374,9 @@
     <string name="add_expense_field_notes">notas (opcional)</string>
 
     <!-- Delete Expense (dialog) -->
+    <string name="expense_undo_payment_title">desfazer pagamento?</string>
+    <string name="expense_undo_payment_message">"%1$s" volta a ficar pendente. a data, o valor e a conta do pagamento são apagados.</string>
+    <string name="expense_undo_payment_confirm">desfazer</string>
     <string name="expense_delete_dialog_title">deletar despesa?</string>
     <string name="expense_delete_dialog_message">isso vai apagar \"%1$s\" permanentemente. essa ação não pode ser desfeita.</string>
 

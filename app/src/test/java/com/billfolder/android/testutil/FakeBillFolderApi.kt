@@ -102,6 +102,7 @@ class FakeBillFolderApi : BillFolderApi {
     var onPayOccurrence: (String, PayOccurrenceRequest) -> ExpenseResponse = { _, _ -> notConfigured("payOccurrence") }
     var onRepriceProvisionedExpense: (String, RepriceProvisionedExpenseRequest) -> ExpenseResponse = { _, _ -> notConfigured("repriceProvisionedExpense") }
     var onUpdateOccurrences: (String, UpdateOccurrencesRequest) -> ExpenseResponse = { _, _ -> notConfigured("updateOccurrences") }
+    var onUnpayExpense: (String) -> ExpenseResponse = { notConfigured("unpayExpense") }
     var onCreateExpenseRecurrence: (CreateExpenseRecurrenceRequest) -> ExpenseRecurrenceResponse = { notConfigured("createExpenseRecurrence") }
     var onCreateIncomeSource: (CreateIncomeSourceRequest) -> IncomeSourceResponse = { notConfigured("createIncomeSource") }
     var onUpdateIncomeSource: (String, UpdateIncomeSourceRequest) -> IncomeSourceResponse = { _, _ -> notConfigured("updateIncomeSource") }
@@ -140,6 +141,7 @@ class FakeBillFolderApi : BillFolderApi {
     val payOccurrenceCalls = mutableListOf<Pair<String, PayOccurrenceRequest>>()
     val repriceProvisionedExpenseCalls = mutableListOf<Pair<String, RepriceProvisionedExpenseRequest>>()
     val updateOccurrencesCalls = mutableListOf<Pair<String, UpdateOccurrencesRequest>>()
+    val unpayExpenseCalls = mutableListOf<String>()
     val createExpenseRecurrenceCalls = mutableListOf<CreateExpenseRecurrenceRequest>()
     val createCardEntryRecurrenceCalls = mutableListOf<CreateCardEntryRecurrenceRequest>()
     val updateCardSubscriptionAmountCalls = mutableListOf<Pair<String, UpdateCardSubscriptionAmountRequest>>()
@@ -250,6 +252,10 @@ class FakeBillFolderApi : BillFolderApi {
     override suspend fun repriceProvisionedExpense(id: String, request: RepriceProvisionedExpenseRequest): ExpenseResponse {
         repriceProvisionedExpenseCalls += id to request
         return onRepriceProvisionedExpense(id, request)
+    }
+    override suspend fun unpayExpense(id: String): ExpenseResponse {
+        unpayExpenseCalls += id
+        return onUnpayExpense(id)
     }
     override suspend fun updateOccurrences(id: String, request: UpdateOccurrencesRequest): ExpenseResponse {
         updateOccurrencesCalls += id to request

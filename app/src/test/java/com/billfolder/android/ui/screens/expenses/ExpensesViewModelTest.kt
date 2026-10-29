@@ -256,4 +256,60 @@ class ExpensesViewModelTest {
 
         assertEquals(2, (vm.state.value as ExpensesUiState.Content).expenses.size)
     }
+
+    // ---- Desfazer pagamento ------------------------------------------------------
+
+    private fun loadedWithPaid(): ExpensesViewModel {
+        val c = cycle("cy1", "2026-06-01", "2026-06-30")
+        api.onGetCurrentCycle = { c }
+        api.cycles = listOf(c)
+        api.expenses = listOf(expense("luz", "2026-06-20", status = "paid"))
+        return viewModel()
+    }
+
+    @Test
+    fun `desfazer pagamento troca a despesa pela versao pendente`() {
+        // O backend passa a listar a despesa como pendente (a tela recarrega após a escrita).
+        api.onUnpayExpense = {
+            expense("luz", "2026-06-20", status = "pending").also { api.expenses = listOf(it) }
+        }
+        val vm = loadedWithPaid()
+        val paid = (vm.state.value as ExpensesUiState.Content).expenses.single()
+
+        vm.requestUndoPayment(paid)
+        assertEquals(paid, (vm.state.value as ExpensesUiState.Content).pendingUndo)
+        vm.confirmUndoPayment()
+
+        val state = vm.state.value as ExpensesUiState.Content
+        assertEquals(listOf("luz"), api.unpayExpenseCalls)
+        assertEquals("pending", state.expenses.single().status)
+        assertEquals(null, state.pendingUndo)
+        assertEquals(null, state.undoingId)
+    }
+
+    @Test
+    fun `cancelar nao chama o backend`() {
+        val vm = loadedWithPaid()
+        vm.requestUndoPayment((vm.state.value as ExpensesUiState.Content).expenses.single())
+
+        vm.cancelUndoPayment()
+
+        assertEquals(null, (vm.state.value as ExpensesUiState.Content).pendingUndo)
+        assertTrue(api.unpayExpenseCalls.isEmpty())
+    }
+
+    @Test
+    fun `falha mantem a lista e mostra o erro no dialogo`() {
+        api.onUnpayExpense = { throw java.io.IOException("offline") }
+        val vm = loadedWithPaid()
+        val paid = (vm.state.value as ExpensesUiState.Content).expenses.single()
+        vm.requestUndoPayment(paid)
+
+        vm.confirmUndoPayment()
+
+        val state = vm.state.value as ExpensesUiState.Content
+        assertEquals("paid", state.expenses.single().status)
+        assertEquals(paid, state.pendingUndo)
+        assertEquals("Sem conexão. Tenta de novo.", state.undoError)
+    }
 }

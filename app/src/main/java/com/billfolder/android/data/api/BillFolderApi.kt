@@ -292,6 +292,13 @@ interface BillFolderApi {
         @Body request: RepriceProvisionedExpenseRequest,
     ): ExpenseResponse
 
+    /**
+     * Desfaz um pagamento confirmado por engano: volta pra pendente (ou
+     * atrasada) sem data, valor nem conta. Não vale pra provisionada.
+     */
+    @POST("expenses/{id}/unpay")
+    suspend fun unpayExpense(@Path("id") id: String): ExpenseResponse
+
     /** Muda quantas sessões a despesa provisionada tem neste ciclo. */
     @POST("expenses/{id}/update-occurrences")
     suspend fun updateOccurrences(

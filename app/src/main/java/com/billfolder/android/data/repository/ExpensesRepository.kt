@@ -75,6 +75,10 @@ class ExpensesRepository @Inject constructor(
         request: RepriceProvisionedExpenseRequest,
     ): ExpenseResponse = notifier.notifyingOnSuccess { api.repriceProvisionedExpense(id, request) }
 
+    /** Desfaz um pagamento confirmado por engano (POST /expenses/{id}/unpay). */
+    suspend fun undoPayment(id: String): ExpenseResponse =
+        notifier.notifyingOnSuccess { api.unpayExpense(id) }
+
     /**
      * Quantas sessões a despesa provisionada tem neste ciclo
      * (POST /expenses/{id}/update-occurrences). Só este ciclo muda.

@@ -33,6 +33,8 @@ import javax.inject.Inject
  *  - pendingDelete: row em swipe-left aguardando confirmação no AlertDialog
  *  - editing: row em swipe-right com sheet de edit aberta
  *  - deletingId: id da row sendo deletada (entre confirm e resposta)
+ *  - pendingUndo/undoingId/undoError: desfazer o pagamento de uma despesa
+ *    paga (tap na row paga). O erro fica no diálogo; a lista não cai.
  *
  * Importante: o "pagar despesa" continua sendo um fluxo separado (tap
  * na row pending/overdue → PayExpenseSheet). Swipe-right é pra editar
@@ -47,6 +49,9 @@ sealed interface ExpensesUiState {
         val pendingDelete: ExpenseResponse? = null,
         val editing: ExpenseResponse? = null,
         val deletingId: String? = null,
+        val pendingUndo: ExpenseResponse? = null,
+        val undoingId: String? = null,
+        val undoError: String? = null,
         val cycles: List<CycleResponse> = emptyList(),
         val isSwitchingCycle: Boolean = false,
         val isRefreshing: Boolean = false,
@@ -161,6 +166,51 @@ class ExpensesViewModel @Inject constructor(
                 _state.value = ExpensesUiState.Error("Sem conexão. Tenta de novo.")
             } catch (e: Exception) {
                 _state.value = ExpensesUiState.Error(e.message ?: "Algo deu errado.")
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Desfazer pagamento (tap numa row paga)
+    // ------------------------------------------------------------------------
+
+    fun requestUndoPayment(item: ExpenseResponse) {
+        _state.update { (it as? ExpensesUiState.Content)?.copy(pendingUndo = item, undoError = null) ?: it }
+    }
+
+    fun cancelUndoPayment() {
+        _state.update { (it as? ExpensesUiState.Content)?.copy(pendingUndo = null, undoError = null) ?: it }
+    }
+
+    fun confirmUndoPayment() {
+        val current = _state.value as? ExpensesUiState.Content ?: return
+        val item = current.pendingUndo ?: return
+        if (current.undoingId != null) return
+
+        _state.update { (it as? ExpensesUiState.Content)?.copy(undoingId = item.id, undoError = null) ?: it }
+
+        viewModelScope.launch {
+            val error = try {
+                val reopened = expensesRepository.undoPayment(item.id)
+                _state.update { s ->
+                    (s as? ExpensesUiState.Content)?.copy(
+                        expenses = s.expenses.map { if (it.id == reopened.id) reopened else it },
+                        pendingUndo = null,
+                        undoingId = null,
+                    ) ?: s
+                }
+                null
+            } catch (e: HttpException) {
+                "Erro do servidor (HTTP ${e.code()})."
+            } catch (e: IOException) {
+                "Sem conexão. Tenta de novo."
+            } catch (e: Exception) {
+                e.message ?: "Algo deu errado."
+            }
+            if (error != null) {
+                _state.update {
+                    (it as? ExpensesUiState.Content)?.copy(undoingId = null, undoError = error) ?: it
+                }
             }
         }
     }
